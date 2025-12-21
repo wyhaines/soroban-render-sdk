@@ -30,6 +30,7 @@
 //! - `markdown` - MarkdownBuilder for markdown output (default)
 //! - `json` - JsonDocument builder for JSON UI format (default)
 //! - `router` - Router and path utilities (default)
+//! - `styles` - StyleBuilder for CSS stylesheet output (default)
 
 #![no_std]
 
@@ -48,6 +49,9 @@ pub mod json;
 
 #[cfg(feature = "router")]
 pub mod router;
+
+#[cfg(feature = "styles")]
+pub mod styles;
 
 // Prelude for convenient imports
 pub mod prelude;

@@ -13,7 +13,7 @@ pub use crate::bytes::{
 };
 
 // Re-export metadata macros
-pub use crate::{render_formats, render_v1, soroban_render};
+pub use crate::{render_formats, render_has_styles, render_theme, render_v1, soroban_render};
 
 // Re-export markdown builder (when feature enabled)
 #[cfg(feature = "markdown")]
@@ -29,6 +29,10 @@ pub use crate::router::{
     parse_id, path_eq, path_starts_with, path_suffix, path_to_bytes, Request, Router,
     RouterResult,
 };
+
+// Re-export style builder (when feature enabled)
+#[cfg(feature = "styles")]
+pub use crate::styles::StyleBuilder;
 
 // Re-export Bytes from soroban_sdk for convenience
 pub use soroban_sdk::Bytes;

@@ -18,10 +18,11 @@ soroban-sdk = "22.0.0"
 soroban-sdk = { version = "22.0.0", features = ["testutils"] }
 
 [features]
-default = ["markdown", "json", "router"]
+default = ["markdown", "json", "router", "styles"]
 markdown = []
 json = []
 router = []
+styles = []
 
 [profile.release]
 opt-level = "z"
