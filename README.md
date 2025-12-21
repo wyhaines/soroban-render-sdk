@@ -175,11 +175,23 @@ pub fn render(env: Env, _path: Option<String>, viewer: Option<Address>) -> Bytes
 }
 ```
 
+## Documentation
+
+Complete documentation is available in the main Soroban Render repository:
+
+- **[Rust SDK Reference](https://github.com/wyhaines/soroban-render/blob/main/docs/rust-sdk.md)** - Complete API documentation
+- **[Router Guide](https://github.com/wyhaines/soroban-render/blob/main/docs/router-guide.md)** - Path matching patterns
+- **[Examples](https://github.com/wyhaines/soroban-render/blob/main/docs/examples.md)** - Contract walkthroughs
+- **[Getting Started](https://github.com/wyhaines/soroban-render/blob/main/docs/getting-started.md)** - First contract tutorial
+- **[Testing](https://github.com/wyhaines/soroban-render/blob/main/docs/testing.md)** - Testing strategies
+- **[Best Practices](https://github.com/wyhaines/soroban-render/blob/main/docs/best-practices.md)** - Design patterns
+- **[Troubleshooting](https://github.com/wyhaines/soroban-render/blob/main/docs/troubleshooting.md)** - Common issues
+
 ## License
 
 Apache 2.0
 
 ## Related
 
-- [Soroban Render](https://github.com/wyhaines/soroban-render) - The main project
+- [Soroban Render](https://github.com/wyhaines/soroban-render) - The main project with viewer and documentation
 - [Soroban SDK](https://github.com/stellar/rs-soroban-sdk) - Stellar's Soroban SDK
