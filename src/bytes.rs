@@ -4,9 +4,10 @@
 
 use soroban_sdk::{Bytes, Env, String, Vec};
 
-/// Maximum buffer size for string-to-bytes conversion.
-/// Strings longer than this will be truncated.
-pub const STRING_BUFFER_SIZE: usize = 256;
+/// Maximum supported string length for conversion.
+/// Strings longer than this cannot be fully converted due to Soroban SDK
+/// limitations (copy_into_slice requires a buffer >= string length).
+pub const MAX_STRING_SIZE: usize = 16384;
 
 /// Concatenate a vector of Bytes into a single Bytes object.
 ///
@@ -29,7 +30,10 @@ pub fn concat_bytes(env: &Env, parts: &Vec<Bytes>) -> Bytes {
 
 /// Convert a soroban_sdk::String to Bytes.
 ///
-/// Uses a fixed-size buffer of 256 bytes. Strings longer than this will be truncated.
+/// Uses tiered buffer sizes for efficiency: 256B, 1KB, 4KB, or 16KB based on
+/// string length. Strings up to 16KB are fully converted. Strings exceeding
+/// 16KB return a placeholder message since Soroban's `copy_into_slice` requires
+/// a buffer at least as large as the string.
 ///
 /// # Example
 ///
@@ -38,15 +42,41 @@ pub fn concat_bytes(env: &Env, parts: &Vec<Bytes>) -> Bytes {
 /// let bytes = string_to_bytes(&env, &s);
 /// ```
 pub fn string_to_bytes(env: &Env, s: &String) -> Bytes {
-    let mut buf = [0u8; STRING_BUFFER_SIZE];
     let len = s.len() as usize;
-    let copy_len = if len > STRING_BUFFER_SIZE {
-        STRING_BUFFER_SIZE
-    } else {
-        len
-    };
-    s.copy_into_slice(&mut buf[..copy_len]);
-    Bytes::from_slice(env, &buf[..copy_len])
+
+    if len == 0 {
+        return Bytes::new(env);
+    }
+
+    // Tiered buffers to balance stack usage vs. capability.
+    // Each tier only allocates its specific size on the stack.
+    if len <= 256 {
+        let mut buf = [0u8; 256];
+        s.copy_into_slice(&mut buf[..len]);
+        return Bytes::from_slice(env, &buf[..len]);
+    }
+
+    if len <= 1024 {
+        let mut buf = [0u8; 1024];
+        s.copy_into_slice(&mut buf[..len]);
+        return Bytes::from_slice(env, &buf[..len]);
+    }
+
+    if len <= 4096 {
+        let mut buf = [0u8; 4096];
+        s.copy_into_slice(&mut buf[..len]);
+        return Bytes::from_slice(env, &buf[..len]);
+    }
+
+    if len <= MAX_STRING_SIZE {
+        let mut buf = [0u8; MAX_STRING_SIZE];
+        s.copy_into_slice(&mut buf[..len]);
+        return Bytes::from_slice(env, &buf[..len]);
+    }
+
+    // String exceeds maximum supported size.
+    // We cannot truncate because copy_into_slice requires a buffer >= string length.
+    Bytes::from_slice(env, b"[content exceeds 16KB limit]")
 }
 
 /// Convert a u32 to its decimal Bytes representation.
@@ -237,6 +267,72 @@ mod tests {
         let s = String::from_str(&env, "Hello");
         let bytes = string_to_bytes(&env, &s);
         assert_eq!(bytes.len(), 5);
+    }
+
+    #[test]
+    fn test_string_to_bytes_empty() {
+        let env = Env::default();
+        let s = String::from_str(&env, "");
+        let bytes = string_to_bytes(&env, &s);
+        assert_eq!(bytes.len(), 0);
+    }
+
+    #[test]
+    fn test_string_to_bytes_256_boundary() {
+        let env = Env::default();
+        // Exactly 256 bytes - should use first tier
+        let content = "a".repeat(256);
+        let s = String::from_str(&env, &content);
+        let bytes = string_to_bytes(&env, &s);
+        assert_eq!(bytes.len(), 256);
+    }
+
+    #[test]
+    fn test_string_to_bytes_257_uses_1kb_tier() {
+        let env = Env::default();
+        // 257 bytes - should use second tier (1KB buffer)
+        let content = "a".repeat(257);
+        let s = String::from_str(&env, &content);
+        let bytes = string_to_bytes(&env, &s);
+        assert_eq!(bytes.len(), 257);
+    }
+
+    #[test]
+    fn test_string_to_bytes_1kb_boundary() {
+        let env = Env::default();
+        let content = "a".repeat(1024);
+        let s = String::from_str(&env, &content);
+        let bytes = string_to_bytes(&env, &s);
+        assert_eq!(bytes.len(), 1024);
+    }
+
+    #[test]
+    fn test_string_to_bytes_4kb() {
+        let env = Env::default();
+        let content = "a".repeat(4000);
+        let s = String::from_str(&env, &content);
+        let bytes = string_to_bytes(&env, &s);
+        assert_eq!(bytes.len(), 4000);
+    }
+
+    #[test]
+    fn test_string_to_bytes_large() {
+        let env = Env::default();
+        // 10KB string - should use 16KB tier
+        let content = "a".repeat(10000);
+        let s = String::from_str(&env, &content);
+        let bytes = string_to_bytes(&env, &s);
+        assert_eq!(bytes.len(), 10000);
+    }
+
+    #[test]
+    fn test_string_to_bytes_max_size() {
+        let env = Env::default();
+        // Exactly at the 16KB limit
+        let content = "a".repeat(MAX_STRING_SIZE);
+        let s = String::from_str(&env, &content);
+        let bytes = string_to_bytes(&env, &s);
+        assert_eq!(bytes.len(), MAX_STRING_SIZE as u32);
     }
 
     #[test]
