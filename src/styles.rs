@@ -16,8 +16,6 @@
 //!     .build();
 //! ```
 
-extern crate alloc;
-
 use crate::bytes::concat_bytes;
 use soroban_sdk::{Bytes, Env, Vec};
 
@@ -296,6 +294,8 @@ impl<'a> StyleBuilder<'a> {
 
 #[cfg(test)]
 mod tests {
+    extern crate alloc;
+
     use super::*;
 
     fn bytes_to_string(bytes: &Bytes) -> alloc::string::String {
