@@ -478,6 +478,135 @@ impl<'a> MarkdownBuilder<'a> {
     }
 
     // ========================================================================
+    // Blockquotes
+    // ========================================================================
+
+    /// Add a blockquote.
+    ///
+    /// Creates: `> text`
+    pub fn blockquote(mut self, text: &str) -> Self {
+        self.parts.push_back(Bytes::from_slice(self.env, b"> "));
+        self.parts
+            .push_back(Bytes::from_slice(self.env, text.as_bytes()));
+        self.parts
+            .push_back(Bytes::from_slice(self.env, b"\n\n"));
+        self
+    }
+
+    // ========================================================================
+    // Progressive Loading / Continuation
+    // ========================================================================
+
+    /// Add a continuation marker for remaining content chunks.
+    ///
+    /// Used for progressive loading when content is split across multiple chunks.
+    /// The viewer will fetch additional content starting from `from_index`.
+    ///
+    /// Creates: `{{continue collection="name" from=N total=T}}`
+    ///
+    /// # Example
+    ///
+    /// ```rust,ignore
+    /// // In a contract with chunked comments:
+    /// builder
+    ///     .h2("Comments")
+    ///     // ... render first 5 comments ...
+    ///     .continuation("comments", 5, Some(50))  // 45 more to load
+    /// ```
+    pub fn continuation(mut self, collection: &str, from_index: u32, total: Option<u32>) -> Self {
+        self.parts
+            .push_back(Bytes::from_slice(self.env, b"{{continue collection=\""));
+        self.parts
+            .push_back(Bytes::from_slice(self.env, collection.as_bytes()));
+        self.parts
+            .push_back(Bytes::from_slice(self.env, b"\" from="));
+        self.parts.push_back(u32_to_bytes(self.env, from_index));
+        if let Some(t) = total {
+            self.parts
+                .push_back(Bytes::from_slice(self.env, b" total="));
+            self.parts.push_back(u32_to_bytes(self.env, t));
+        }
+        self.parts
+            .push_back(Bytes::from_slice(self.env, b"}}"));
+        self
+    }
+
+    /// Add a chunk reference for lazy loading a specific chunk.
+    ///
+    /// The viewer will fetch and insert this chunk when rendering.
+    ///
+    /// Creates: `{{chunk collection="name" index=N}}`
+    pub fn chunk_ref(mut self, collection: &str, index: u32) -> Self {
+        self.parts
+            .push_back(Bytes::from_slice(self.env, b"{{chunk collection=\""));
+        self.parts
+            .push_back(Bytes::from_slice(self.env, collection.as_bytes()));
+        self.parts
+            .push_back(Bytes::from_slice(self.env, b"\" index="));
+        self.parts.push_back(u32_to_bytes(self.env, index));
+        self.parts
+            .push_back(Bytes::from_slice(self.env, b"}}"));
+        self
+    }
+
+    /// Add a chunk reference with a loading placeholder.
+    ///
+    /// The placeholder text is displayed while the chunk is being loaded.
+    ///
+    /// Creates: `{{chunk collection="name" index=N placeholder="..."}}`
+    pub fn chunk_ref_placeholder(
+        mut self,
+        collection: &str,
+        index: u32,
+        placeholder: &str,
+    ) -> Self {
+        self.parts
+            .push_back(Bytes::from_slice(self.env, b"{{chunk collection=\""));
+        self.parts
+            .push_back(Bytes::from_slice(self.env, collection.as_bytes()));
+        self.parts
+            .push_back(Bytes::from_slice(self.env, b"\" index="));
+        self.parts.push_back(u32_to_bytes(self.env, index));
+        self.parts
+            .push_back(Bytes::from_slice(self.env, b" placeholder=\""));
+        self.parts
+            .push_back(Bytes::from_slice(self.env, placeholder.as_bytes()));
+        self.parts
+            .push_back(Bytes::from_slice(self.env, b"\"}}"));
+        self
+    }
+
+    /// Add a paginated continuation marker.
+    ///
+    /// Used for page-based progressive loading (e.g., comment threads, list views).
+    ///
+    /// Creates: `{{continue collection="name" page=N per_page=M total=T}}`
+    pub fn continue_page(
+        mut self,
+        collection: &str,
+        page: u32,
+        per_page: u32,
+        total: u32,
+    ) -> Self {
+        self.parts
+            .push_back(Bytes::from_slice(self.env, b"{{continue collection=\""));
+        self.parts
+            .push_back(Bytes::from_slice(self.env, collection.as_bytes()));
+        self.parts
+            .push_back(Bytes::from_slice(self.env, b"\" page="));
+        self.parts.push_back(u32_to_bytes(self.env, page));
+        self.parts
+            .push_back(Bytes::from_slice(self.env, b" per_page="));
+        self.parts.push_back(u32_to_bytes(self.env, per_page));
+        self.parts
+            .push_back(Bytes::from_slice(self.env, b" total="));
+        self.parts.push_back(u32_to_bytes(self.env, total));
+        self.parts
+            .push_back(Bytes::from_slice(self.env, b"}}"));
+        self
+    }
+
+    // ========================================================================
     // Build
     // ========================================================================
 
@@ -607,5 +736,61 @@ mod tests {
             .render_link("Home", "/")
             .build();
         assert!(output.len() > 30);
+    }
+
+    #[test]
+    fn test_blockquote() {
+        let env = Env::default();
+        let output = MarkdownBuilder::new(&env).blockquote("Quote text").build();
+        // "> Quote text\n\n" = 14 bytes
+        assert_eq!(output.len(), 14);
+    }
+
+    #[test]
+    fn test_continuation() {
+        let env = Env::default();
+        let output = MarkdownBuilder::new(&env)
+            .continuation("comments", 5, Some(50))
+            .build();
+        // {{continue collection="comments" from=5 total=50}}
+        assert!(output.len() > 40);
+    }
+
+    #[test]
+    fn test_continuation_no_total() {
+        let env = Env::default();
+        let output = MarkdownBuilder::new(&env)
+            .continuation("data", 10, None)
+            .build();
+        // {{continue collection="data" from=10}}
+        assert!(output.len() > 30);
+    }
+
+    #[test]
+    fn test_chunk_ref() {
+        let env = Env::default();
+        let output = MarkdownBuilder::new(&env).chunk_ref("chunks", 3).build();
+        // {{chunk collection="chunks" index=3}}
+        assert!(output.len() > 30);
+    }
+
+    #[test]
+    fn test_chunk_ref_placeholder() {
+        let env = Env::default();
+        let output = MarkdownBuilder::new(&env)
+            .chunk_ref_placeholder("content", 7, "Loading...")
+            .build();
+        // {{chunk collection="content" index=7 placeholder="Loading..."}}
+        assert!(output.len() > 50);
+    }
+
+    #[test]
+    fn test_continue_page() {
+        let env = Env::default();
+        let output = MarkdownBuilder::new(&env)
+            .continue_page("items", 2, 10, 47)
+            .build();
+        // {{continue collection="items" page=2 per_page=10 total=47}}
+        assert!(output.len() > 50);
     }
 }
