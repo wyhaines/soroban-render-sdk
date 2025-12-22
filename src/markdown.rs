@@ -425,6 +425,48 @@ impl<'a> MarkdownBuilder<'a> {
         self
     }
 
+    /// Add a hidden input element.
+    ///
+    /// Creates: `<input type="hidden" name="name" value="value" />`
+    ///
+    /// Useful for passing data with form submissions that shouldn't be visible to users.
+    pub fn hidden_input(mut self, name: &str, value: &str) -> Self {
+        self.parts
+            .push_back(Bytes::from_slice(self.env, b"<input type=\"hidden\" name=\""));
+        self.parts
+            .push_back(Bytes::from_slice(self.env, name.as_bytes()));
+        self.parts
+            .push_back(Bytes::from_slice(self.env, b"\" value=\""));
+        self.parts
+            .push_back(Bytes::from_slice(self.env, value.as_bytes()));
+        self.parts
+            .push_back(Bytes::from_slice(self.env, b"\" />\n"));
+        self
+    }
+
+    /// Add a redirect instruction for form submission.
+    ///
+    /// After successful transaction, the viewer will navigate to this path.
+    /// Must be called within a form (between form_start and form_end).
+    ///
+    /// Creates: `<input type="hidden" name="_redirect" value="path" />`
+    ///
+    /// # Arguments
+    /// * `path` - The path to navigate to after successful form submission
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// builder
+    ///     .form_start("tx:create_thread", "POST")
+    ///     .redirect("/b/0")  // Go back to board after creating thread
+    ///     .input("title", "Enter title")
+    ///     .button("submit", "Create")
+    ///     .form_end()
+    /// ```
+    pub fn redirect(self, path: &str) -> Self {
+        self.hidden_input("_redirect", path)
+    }
+
     /// Add a textarea element.
     ///
     /// Creates: `<textarea name="name" rows="N" placeholder="placeholder"></textarea>`
@@ -792,5 +834,25 @@ mod tests {
             .build();
         // {{continue collection="items" page=2 per_page=10 total=47}}
         assert!(output.len() > 50);
+    }
+
+    #[test]
+    fn test_hidden_input() {
+        let env = Env::default();
+        let output = MarkdownBuilder::new(&env)
+            .hidden_input("board_id", "42")
+            .build();
+        // <input type="hidden" name="board_id" value="42" />\n
+        assert!(output.len() > 40);
+    }
+
+    #[test]
+    fn test_redirect() {
+        let env = Env::default();
+        let output = MarkdownBuilder::new(&env)
+            .redirect("/b/0")
+            .build();
+        // <input type="hidden" name="_redirect" value="/b/0" />\n
+        assert!(output.len() > 45);
     }
 }
