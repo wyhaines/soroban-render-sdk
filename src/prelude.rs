@@ -34,5 +34,9 @@ pub use crate::router::{
 #[cfg(feature = "styles")]
 pub use crate::styles::StyleBuilder;
 
+// Re-export registry (when feature enabled)
+#[cfg(feature = "registry")]
+pub use crate::registry::{BaseRegistry, ContractRegistry, RegistryKey};
+
 // Re-export Bytes from soroban_sdk for convenience
 pub use soroban_sdk::Bytes;

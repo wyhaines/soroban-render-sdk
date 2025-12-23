@@ -282,6 +282,59 @@ impl<'a> MarkdownBuilder<'a> {
         self
     }
 
+    /// Add a form: link targeting a specific contract via registry alias.
+    ///
+    /// Creates: `[text](form:@alias:method)`
+    ///
+    /// # Example
+    ///
+    /// ```rust,ignore
+    /// .form_link_to("Update Settings", "admin", "set_chunk_size")
+    /// // Generates: [Update Settings](form:@admin:set_chunk_size)
+    /// ```
+    pub fn form_link_to(mut self, text: &str, alias: &str, method: &str) -> Self {
+        self.parts.push_back(Bytes::from_slice(self.env, b"["));
+        self.parts
+            .push_back(Bytes::from_slice(self.env, text.as_bytes()));
+        self.parts.push_back(Bytes::from_slice(self.env, b"](form:@"));
+        self.parts
+            .push_back(Bytes::from_slice(self.env, alias.as_bytes()));
+        self.parts.push_back(Bytes::from_slice(self.env, b":"));
+        self.parts
+            .push_back(Bytes::from_slice(self.env, method.as_bytes()));
+        self.parts.push_back(Bytes::from_slice(self.env, b")"));
+        self
+    }
+
+    /// Add a tx: link targeting a specific contract via registry alias.
+    ///
+    /// Creates: `[text](tx:@alias:method args)`
+    ///
+    /// # Example
+    ///
+    /// ```rust,ignore
+    /// .tx_link_to("Flag Post", "content", "flag_reply", r#"{"id":123}"#)
+    /// // Generates: [Flag Post](tx:@content:flag_reply {"id":123})
+    /// ```
+    pub fn tx_link_to(mut self, text: &str, alias: &str, method: &str, args: &str) -> Self {
+        self.parts.push_back(Bytes::from_slice(self.env, b"["));
+        self.parts
+            .push_back(Bytes::from_slice(self.env, text.as_bytes()));
+        self.parts.push_back(Bytes::from_slice(self.env, b"](tx:@"));
+        self.parts
+            .push_back(Bytes::from_slice(self.env, alias.as_bytes()));
+        self.parts.push_back(Bytes::from_slice(self.env, b":"));
+        self.parts
+            .push_back(Bytes::from_slice(self.env, method.as_bytes()));
+        if !args.is_empty() {
+            self.parts.push_back(Bytes::from_slice(self.env, b" "));
+            self.parts
+                .push_back(Bytes::from_slice(self.env, args.as_bytes()));
+        }
+        self.parts.push_back(Bytes::from_slice(self.env, b")"));
+        self
+    }
+
     // ========================================================================
     // Alerts / Callouts
     // ========================================================================

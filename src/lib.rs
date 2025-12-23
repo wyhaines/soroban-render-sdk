@@ -53,6 +53,9 @@ pub mod router;
 #[cfg(feature = "styles")]
 pub mod styles;
 
+#[cfg(feature = "registry")]
+pub mod registry;
+
 // Prelude for convenient imports
 pub mod prelude;
 
