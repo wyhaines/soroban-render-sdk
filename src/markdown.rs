@@ -536,6 +536,82 @@ impl<'a> MarkdownBuilder<'a> {
     }
 
     // ========================================================================
+    // HTML Containers (div/span)
+    // ========================================================================
+
+    /// Start a div element with CSS classes.
+    ///
+    /// Creates: `<div class="classes">`
+    ///
+    /// Must be paired with `div_end()` to close the element.
+    ///
+    /// # Example
+    ///
+    /// ```rust,ignore
+    /// builder
+    ///     .div_start("reply reply-depth-1")
+    ///     .paragraph("Nested reply content")
+    ///     .div_end()
+    /// ```
+    pub fn div_start(mut self, classes: &str) -> Self {
+        self.parts
+            .push_back(Bytes::from_slice(self.env, b"<div class=\""));
+        self.parts
+            .push_back(Bytes::from_slice(self.env, classes.as_bytes()));
+        self.parts
+            .push_back(Bytes::from_slice(self.env, b"\">\n"));
+        self
+    }
+
+    /// Start a div element with CSS classes and inline style.
+    ///
+    /// Creates: `<div class="classes" style="style">`
+    pub fn div_start_styled(mut self, classes: &str, style: &str) -> Self {
+        self.parts
+            .push_back(Bytes::from_slice(self.env, b"<div class=\""));
+        self.parts
+            .push_back(Bytes::from_slice(self.env, classes.as_bytes()));
+        self.parts
+            .push_back(Bytes::from_slice(self.env, b"\" style=\""));
+        self.parts
+            .push_back(Bytes::from_slice(self.env, style.as_bytes()));
+        self.parts
+            .push_back(Bytes::from_slice(self.env, b"\">\n"));
+        self
+    }
+
+    /// End a div element.
+    ///
+    /// Creates: `</div>`
+    pub fn div_end(mut self) -> Self {
+        self.parts
+            .push_back(Bytes::from_slice(self.env, b"</div>\n"));
+        self
+    }
+
+    /// Start a span element with CSS classes.
+    ///
+    /// Creates: `<span class="classes">`
+    pub fn span_start(mut self, classes: &str) -> Self {
+        self.parts
+            .push_back(Bytes::from_slice(self.env, b"<span class=\""));
+        self.parts
+            .push_back(Bytes::from_slice(self.env, classes.as_bytes()));
+        self.parts
+            .push_back(Bytes::from_slice(self.env, b"\">"));
+        self
+    }
+
+    /// End a span element.
+    ///
+    /// Creates: `</span>`
+    pub fn span_end(mut self) -> Self {
+        self.parts
+            .push_back(Bytes::from_slice(self.env, b"</span>"));
+        self
+    }
+
+    // ========================================================================
     // Progressive Loading / Continuation
     // ========================================================================
 
@@ -645,6 +721,33 @@ impl<'a> MarkdownBuilder<'a> {
         self.parts.push_back(u32_to_bytes(self.env, total));
         self.parts
             .push_back(Bytes::from_slice(self.env, b"}}"));
+        self
+    }
+
+    /// Add a render continuation marker for waterfall loading.
+    ///
+    /// Used for progressive loading that triggers additional render() calls.
+    /// The viewer will automatically fetch the specified path and insert
+    /// the result inline.
+    ///
+    /// Creates: `{{render path="/some/path"}}`
+    ///
+    /// # Example
+    ///
+    /// ```rust,ignore
+    /// // In a thread view, load first 10 replies, then continue loading more:
+    /// builder
+    ///     .h2("Replies")
+    ///     // ... render first 10 replies ...
+    ///     .render_continue("/b/1/t/0/replies/10")  // load more from offset 10
+    /// ```
+    pub fn render_continue(mut self, path: &str) -> Self {
+        self.parts
+            .push_back(Bytes::from_slice(self.env, b"{{render path=\""));
+        self.parts
+            .push_back(Bytes::from_slice(self.env, path.as_bytes()));
+        self.parts
+            .push_back(Bytes::from_slice(self.env, b"\"}}"));
         self
     }
 
@@ -854,5 +957,55 @@ mod tests {
             .build();
         // <input type="hidden" name="_redirect" value="/b/0" />\n
         assert!(output.len() > 45);
+    }
+
+    #[test]
+    fn test_div_start_end() {
+        let env = Env::default();
+        let output = MarkdownBuilder::new(&env)
+            .div_start("reply reply-depth-1")
+            .text("Content")
+            .div_end()
+            .build();
+        // <div class="reply reply-depth-1">\nContent</div>\n
+        assert!(output.len() > 30);
+    }
+
+    #[test]
+    fn test_div_start_styled() {
+        let env = Env::default();
+        let output = MarkdownBuilder::new(&env)
+            .div_start_styled("container", "margin-left: 24px;")
+            .text("Indented")
+            .div_end()
+            .build();
+        // <div class="container" style="margin-left: 24px;">\nIndented</div>\n
+        assert!(output.len() > 50);
+    }
+
+    #[test]
+    fn test_span_start_end() {
+        let env = Env::default();
+        let output = MarkdownBuilder::new(&env)
+            .span_start("highlight")
+            .text("Important")
+            .span_end()
+            .build();
+        // <span class="highlight">Important</span>
+        assert!(output.len() > 30);
+    }
+
+    #[test]
+    fn test_nested_divs() {
+        let env = Env::default();
+        let output = MarkdownBuilder::new(&env)
+            .div_start("parent")
+            .text("Parent content")
+            .div_start("child")
+            .text("Child content")
+            .div_end()
+            .div_end()
+            .build();
+        assert!(output.len() > 50);
     }
 }
