@@ -74,6 +74,9 @@ let output = MarkdownBuilder::new(&env)
     .render_link("Home", "/")
     .tx_link_id("Delete", "delete_item", 42)
     .form_link("Submit", "add_item")
+    // Target specific contracts via registry alias
+    .form_link_to("Update", "admin", "set_value")
+    .tx_link_to("Flag", "content", "flag_post", r#"{"id":1}"#)
     .include("CONTRACT_ID", "header")
     .build();
 ```
@@ -112,6 +115,24 @@ pub fn render(env: Env, path: Option<String>, viewer: Option<Address>) -> Bytes 
         })
         .or_default(|_| render_home(&env))
 }
+```
+
+### Registry (Multi-Contract Apps)
+
+For applications with multiple contracts:
+
+```rust
+use soroban_render_sdk::registry::BaseRegistry;
+use soroban_sdk::{symbol_short, Address, Env, Map};
+
+// Initialize registry with contracts
+let mut contracts = Map::new(&env);
+contracts.set(symbol_short!("admin"), admin_address);
+contracts.set(symbol_short!("content"), content_address);
+BaseRegistry::init(&env, &admin, contracts);
+
+// Look up by alias
+let content = BaseRegistry::get_by_alias(&env, symbol_short!("content"));
 ```
 
 ### Byte Utilities
