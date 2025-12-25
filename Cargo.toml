@@ -1,10 +1,11 @@
 [package]
 name = "soroban-render-sdk"
 version = "0.1.0"
-edition = "2021"
+edition = "2024"
 license = "Apache-2.0"
 description = "SDK for building Soroban Render contracts with reduced boilerplate"
 repository = "https://github.com/wyhaines/soroban-render-sdk"
+readme = "README.md"
 keywords = ["soroban", "stellar", "blockchain", "smart-contracts", "render"]
 categories = ["no-std", "wasm"]
 

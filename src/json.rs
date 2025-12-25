@@ -331,11 +331,9 @@ impl<'a> JsonDocument<'a> {
         self.parts
             .push_back(Bytes::from_slice(self.env, b"\",\"completed\":"));
         if completed {
-            self.parts
-                .push_back(Bytes::from_slice(self.env, b"true"));
+            self.parts.push_back(Bytes::from_slice(self.env, b"true"));
         } else {
-            self.parts
-                .push_back(Bytes::from_slice(self.env, b"false"));
+            self.parts.push_back(Bytes::from_slice(self.env, b"false"));
         }
         self.parts
             .push_back(Bytes::from_slice(self.env, b",\"actions\":["));
@@ -375,11 +373,9 @@ impl<'a> JsonDocument<'a> {
         self.parts
             .push_back(Bytes::from_slice(self.env, b"\",\"completed\":"));
         if completed {
-            self.parts
-                .push_back(Bytes::from_slice(self.env, b"true"));
+            self.parts.push_back(Bytes::from_slice(self.env, b"true"));
         } else {
-            self.parts
-                .push_back(Bytes::from_slice(self.env, b"false"));
+            self.parts.push_back(Bytes::from_slice(self.env, b"false"));
         }
         self.parts
             .push_back(Bytes::from_slice(self.env, b",\"actions\":["));
@@ -421,10 +417,9 @@ impl<'a> FormBuilder<'a> {
     /// Add a text field.
     pub fn text_field(mut self, name: &str, placeholder: &str, required: bool) -> Self {
         self.maybe_comma();
-        self.doc.parts.push_back(Bytes::from_slice(
-            self.doc.env,
-            b"{\"name\":\"",
-        ));
+        self.doc
+            .parts
+            .push_back(Bytes::from_slice(self.doc.env, b"{\"name\":\""));
         self.doc
             .parts
             .push_back(escape_json_bytes(self.doc.env, name.as_bytes()));
@@ -439,10 +434,9 @@ impl<'a> FormBuilder<'a> {
             .parts
             .push_back(Bytes::from_slice(self.doc.env, b"\""));
         if required {
-            self.doc.parts.push_back(Bytes::from_slice(
-                self.doc.env,
-                b",\"required\":true",
-            ));
+            self.doc
+                .parts
+                .push_back(Bytes::from_slice(self.doc.env, b",\"required\":true"));
         }
         self.doc
             .parts
@@ -453,10 +447,9 @@ impl<'a> FormBuilder<'a> {
     /// Add a textarea field.
     pub fn textarea_field(mut self, name: &str, placeholder: &str) -> Self {
         self.maybe_comma();
-        self.doc.parts.push_back(Bytes::from_slice(
-            self.doc.env,
-            b"{\"name\":\"",
-        ));
+        self.doc
+            .parts
+            .push_back(Bytes::from_slice(self.doc.env, b"{\"name\":\""));
         self.doc
             .parts
             .push_back(escape_json_bytes(self.doc.env, name.as_bytes()));
@@ -475,10 +468,9 @@ impl<'a> FormBuilder<'a> {
 
     /// Complete the form with a submit label.
     pub fn submit(mut self, label: &str) -> JsonDocument<'a> {
-        self.doc.parts.push_back(Bytes::from_slice(
-            self.doc.env,
-            b"],\"submitLabel\":\"",
-        ));
+        self.doc
+            .parts
+            .push_back(Bytes::from_slice(self.doc.env, b"],\"submitLabel\":\""));
         self.doc
             .parts
             .push_back(escape_json_bytes(self.doc.env, label.as_bytes()));
@@ -516,15 +508,13 @@ impl<'a> TaskBuilder<'a> {
         self.doc
             .parts
             .push_back(escape_json_bytes(self.doc.env, method.as_bytes()));
-        self.doc.parts.push_back(Bytes::from_slice(
-            self.doc.env,
-            b"\",\"args\":{\"id\":",
-        ));
+        self.doc
+            .parts
+            .push_back(Bytes::from_slice(self.doc.env, b"\",\"args\":{\"id\":"));
         self.doc.parts.push_back(u32_to_bytes(self.doc.env, id));
-        self.doc.parts.push_back(Bytes::from_slice(
-            self.doc.env,
-            b"},\"label\":\"",
-        ));
+        self.doc
+            .parts
+            .push_back(Bytes::from_slice(self.doc.env, b"},\"label\":\""));
         self.doc
             .parts
             .push_back(escape_json_bytes(self.doc.env, label.as_bytes()));

@@ -120,11 +120,7 @@ pub fn parse_id(path: &Bytes, prefix: &[u8]) -> Option<u32> {
         }
     }
 
-    if has_digit {
-        Some(result)
-    } else {
-        None
-    }
+    if has_digit { Some(result) } else { None }
 }
 
 // ============================================================================

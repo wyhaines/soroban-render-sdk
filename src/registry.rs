@@ -31,7 +31,7 @@
 //! }
 //! ```
 
-use soroban_sdk::{contracttype, Address, Env, Map, Symbol};
+use soroban_sdk::{Address, Env, Map, Symbol, contracttype};
 
 /// Storage keys used by the base registry.
 ///
@@ -110,7 +110,9 @@ impl BaseRegistry {
 
         admin.require_auth();
         env.storage().instance().set(&RegistryKey::Admin, admin);
-        env.storage().instance().set(&RegistryKey::Contracts, &contracts);
+        env.storage()
+            .instance()
+            .set(&RegistryKey::Contracts, &contracts);
     }
 
     /// Register or update a contract alias.
@@ -140,7 +142,9 @@ impl BaseRegistry {
             .get(&RegistryKey::Contracts)
             .unwrap_or(Map::new(env));
         contracts.set(alias, address);
-        env.storage().instance().set(&RegistryKey::Contracts, &contracts);
+        env.storage()
+            .instance()
+            .set(&RegistryKey::Contracts, &contracts);
     }
 
     /// Look up a contract by its alias.
@@ -154,7 +158,8 @@ impl BaseRegistry {
     ///
     /// `Some(Address)` if the alias is registered, `None` otherwise.
     pub fn get_by_alias(env: &Env, alias: Symbol) -> Option<Address> {
-        let contracts: Map<Symbol, Address> = env.storage().instance().get(&RegistryKey::Contracts)?;
+        let contracts: Map<Symbol, Address> =
+            env.storage().instance().get(&RegistryKey::Contracts)?;
         contracts.get(alias)
     }
 
@@ -213,14 +218,16 @@ impl BaseRegistry {
             .get(&RegistryKey::Contracts)
             .unwrap_or(Map::new(env));
         contracts.remove(alias);
-        env.storage().instance().set(&RegistryKey::Contracts, &contracts);
+        env.storage()
+            .instance()
+            .set(&RegistryKey::Contracts, &contracts);
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use soroban_sdk::{contract, contractimpl, symbol_short, testutils::Address as _, Env};
+    use soroban_sdk::{Env, contract, contractimpl, symbol_short, testutils::Address as _};
 
     // Minimal test contract that uses BaseRegistry
     #[contract]

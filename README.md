@@ -1,5 +1,9 @@
 # Soroban Render SDK
 
+[![CI](https://github.com/wyhaines/soroban-render-sdk/actions/workflows/ci.yml/badge.svg)](https://github.com/wyhaines/soroban-render-sdk/actions/workflows/ci.yml)
+[![Crates.io](https://img.shields.io/crates/v/soroban-render-sdk.svg)](https://crates.io/crates/soroban-render-sdk)
+[![License](https://img.shields.io/crates/l/soroban-render-sdk.svg)](LICENSE)
+
 A Rust SDK for building [Soroban Render](https://github.com/wyhaines/soroban-render) contracts with reduced boilerplate.
 
 ## Installation

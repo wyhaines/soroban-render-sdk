@@ -111,7 +111,6 @@ macro_rules! soroban_render {
     // ========================================================================
     // Patterns with styles
     // ========================================================================
-
     (markdown, styles) => {
         $crate::render_v1!();
         $crate::render_formats!(markdown);
@@ -136,7 +135,6 @@ macro_rules! soroban_render {
     // ========================================================================
     // Patterns with theme
     // ========================================================================
-
     (markdown, theme = $theme:expr) => {
         $crate::render_v1!();
         $crate::render_formats!(markdown);
@@ -156,7 +154,6 @@ macro_rules! soroban_render {
     // ========================================================================
     // Patterns with both styles and theme
     // ========================================================================
-
     (markdown, styles, theme = $theme:expr) => {
         $crate::render_v1!();
         $crate::render_formats!(markdown);

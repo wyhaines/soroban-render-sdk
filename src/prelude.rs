@@ -26,8 +26,7 @@ pub use crate::json::{FormBuilder, JsonDocument, TaskBuilder};
 // Re-export router (when feature enabled)
 #[cfg(feature = "router")]
 pub use crate::router::{
-    parse_id, path_eq, path_starts_with, path_suffix, path_to_bytes, Request, Router,
-    RouterResult,
+    Request, Router, RouterResult, parse_id, path_eq, path_starts_with, path_suffix, path_to_bytes,
 };
 
 // Re-export style builder (when feature enabled)

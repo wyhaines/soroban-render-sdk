@@ -42,34 +42,28 @@ impl<'a> MarkdownBuilder<'a> {
 
     /// Add a level 1 heading.
     pub fn h1(mut self, text: &str) -> Self {
-        self.parts
-            .push_back(Bytes::from_slice(self.env, b"# "));
+        self.parts.push_back(Bytes::from_slice(self.env, b"# "));
         self.parts
             .push_back(Bytes::from_slice(self.env, text.as_bytes()));
-        self.parts
-            .push_back(Bytes::from_slice(self.env, b"\n\n"));
+        self.parts.push_back(Bytes::from_slice(self.env, b"\n\n"));
         self
     }
 
     /// Add a level 2 heading.
     pub fn h2(mut self, text: &str) -> Self {
-        self.parts
-            .push_back(Bytes::from_slice(self.env, b"## "));
+        self.parts.push_back(Bytes::from_slice(self.env, b"## "));
         self.parts
             .push_back(Bytes::from_slice(self.env, text.as_bytes()));
-        self.parts
-            .push_back(Bytes::from_slice(self.env, b"\n\n"));
+        self.parts.push_back(Bytes::from_slice(self.env, b"\n\n"));
         self
     }
 
     /// Add a level 3 heading.
     pub fn h3(mut self, text: &str) -> Self {
-        self.parts
-            .push_back(Bytes::from_slice(self.env, b"### "));
+        self.parts.push_back(Bytes::from_slice(self.env, b"### "));
         self.parts
             .push_back(Bytes::from_slice(self.env, text.as_bytes()));
-        self.parts
-            .push_back(Bytes::from_slice(self.env, b"\n\n"));
+        self.parts.push_back(Bytes::from_slice(self.env, b"\n\n"));
         self
     }
 
@@ -86,8 +80,7 @@ impl<'a> MarkdownBuilder<'a> {
         self.parts.push_back(Bytes::from_slice(self.env, prefix));
         self.parts
             .push_back(Bytes::from_slice(self.env, text.as_bytes()));
-        self.parts
-            .push_back(Bytes::from_slice(self.env, b"\n\n"));
+        self.parts.push_back(Bytes::from_slice(self.env, b"\n\n"));
         self
     }
 
@@ -106,19 +99,16 @@ impl<'a> MarkdownBuilder<'a> {
     pub fn paragraph(mut self, text: &str) -> Self {
         self.parts
             .push_back(Bytes::from_slice(self.env, text.as_bytes()));
-        self.parts
-            .push_back(Bytes::from_slice(self.env, b"\n\n"));
+        self.parts.push_back(Bytes::from_slice(self.env, b"\n\n"));
         self
     }
 
     /// Add bold text.
     pub fn bold(mut self, text: &str) -> Self {
-        self.parts
-            .push_back(Bytes::from_slice(self.env, b"**"));
+        self.parts.push_back(Bytes::from_slice(self.env, b"**"));
         self.parts
             .push_back(Bytes::from_slice(self.env, text.as_bytes()));
-        self.parts
-            .push_back(Bytes::from_slice(self.env, b"**"));
+        self.parts.push_back(Bytes::from_slice(self.env, b"**"));
         self
     }
 
@@ -142,12 +132,10 @@ impl<'a> MarkdownBuilder<'a> {
 
     /// Add strikethrough text.
     pub fn strikethrough(mut self, text: &str) -> Self {
-        self.parts
-            .push_back(Bytes::from_slice(self.env, b"~~"));
+        self.parts.push_back(Bytes::from_slice(self.env, b"~~"));
         self.parts
             .push_back(Bytes::from_slice(self.env, text.as_bytes()));
-        self.parts
-            .push_back(Bytes::from_slice(self.env, b"~~"));
+        self.parts.push_back(Bytes::from_slice(self.env, b"~~"));
         self
     }
 
@@ -296,7 +284,8 @@ impl<'a> MarkdownBuilder<'a> {
         self.parts.push_back(Bytes::from_slice(self.env, b"["));
         self.parts
             .push_back(Bytes::from_slice(self.env, text.as_bytes()));
-        self.parts.push_back(Bytes::from_slice(self.env, b"](form:@"));
+        self.parts
+            .push_back(Bytes::from_slice(self.env, b"](form:@"));
         self.parts
             .push_back(Bytes::from_slice(self.env, alias.as_bytes()));
         self.parts.push_back(Bytes::from_slice(self.env, b":"));
@@ -375,12 +364,10 @@ impl<'a> MarkdownBuilder<'a> {
         self.parts.push_back(Bytes::from_slice(self.env, b"> [!"));
         self.parts
             .push_back(Bytes::from_slice(self.env, alert_type.as_bytes()));
-        self.parts
-            .push_back(Bytes::from_slice(self.env, b"]\n> "));
+        self.parts.push_back(Bytes::from_slice(self.env, b"]\n> "));
         self.parts
             .push_back(Bytes::from_slice(self.env, content.as_bytes()));
-        self.parts
-            .push_back(Bytes::from_slice(self.env, b"\n\n"));
+        self.parts.push_back(Bytes::from_slice(self.env, b"\n\n"));
         self
     }
 
@@ -401,8 +388,7 @@ impl<'a> MarkdownBuilder<'a> {
     ///
     /// Creates: `|||`
     pub fn column_separator(mut self) -> Self {
-        self.parts
-            .push_back(Bytes::from_slice(self.env, b"|||\n"));
+        self.parts.push_back(Bytes::from_slice(self.env, b"|||\n"));
         self
     }
 
@@ -431,8 +417,7 @@ impl<'a> MarkdownBuilder<'a> {
             .push_back(Bytes::from_slice(self.env, b" func=\""));
         self.parts
             .push_back(Bytes::from_slice(self.env, func.as_bytes()));
-        self.parts
-            .push_back(Bytes::from_slice(self.env, b"\"}}"));
+        self.parts.push_back(Bytes::from_slice(self.env, b"\"}}"));
         self
     }
 
@@ -452,8 +437,7 @@ impl<'a> MarkdownBuilder<'a> {
             .push_back(Bytes::from_slice(self.env, b"\" path=\""));
         self.parts
             .push_back(Bytes::from_slice(self.env, path.as_bytes()));
-        self.parts
-            .push_back(Bytes::from_slice(self.env, b"\"}}"));
+        self.parts.push_back(Bytes::from_slice(self.env, b"\"}}"));
         self
     }
 
@@ -484,8 +468,10 @@ impl<'a> MarkdownBuilder<'a> {
     ///
     /// Useful for passing data with form submissions that shouldn't be visible to users.
     pub fn hidden_input(mut self, name: &str, value: &str) -> Self {
-        self.parts
-            .push_back(Bytes::from_slice(self.env, b"<input type=\"hidden\" name=\""));
+        self.parts.push_back(Bytes::from_slice(
+            self.env,
+            b"<input type=\"hidden\" name=\"",
+        ));
         self.parts
             .push_back(Bytes::from_slice(self.env, name.as_bytes()));
         self.parts
@@ -560,11 +546,9 @@ impl<'a> MarkdownBuilder<'a> {
     /// Creates: `- [x] text` or `- [ ] text`
     pub fn checkbox(mut self, checked: bool, text: &str) -> Self {
         if checked {
-            self.parts
-                .push_back(Bytes::from_slice(self.env, b"- [x] "));
+            self.parts.push_back(Bytes::from_slice(self.env, b"- [x] "));
         } else {
-            self.parts
-                .push_back(Bytes::from_slice(self.env, b"- [ ] "));
+            self.parts.push_back(Bytes::from_slice(self.env, b"- [ ] "));
         }
         self.parts
             .push_back(Bytes::from_slice(self.env, text.as_bytes()));
@@ -583,8 +567,7 @@ impl<'a> MarkdownBuilder<'a> {
         self.parts.push_back(Bytes::from_slice(self.env, b"> "));
         self.parts
             .push_back(Bytes::from_slice(self.env, text.as_bytes()));
-        self.parts
-            .push_back(Bytes::from_slice(self.env, b"\n\n"));
+        self.parts.push_back(Bytes::from_slice(self.env, b"\n\n"));
         self
     }
 
@@ -611,8 +594,7 @@ impl<'a> MarkdownBuilder<'a> {
             .push_back(Bytes::from_slice(self.env, b"<div class=\""));
         self.parts
             .push_back(Bytes::from_slice(self.env, classes.as_bytes()));
-        self.parts
-            .push_back(Bytes::from_slice(self.env, b"\">\n"));
+        self.parts.push_back(Bytes::from_slice(self.env, b"\">\n"));
         self
     }
 
@@ -628,8 +610,7 @@ impl<'a> MarkdownBuilder<'a> {
             .push_back(Bytes::from_slice(self.env, b"\" style=\""));
         self.parts
             .push_back(Bytes::from_slice(self.env, style.as_bytes()));
-        self.parts
-            .push_back(Bytes::from_slice(self.env, b"\">\n"));
+        self.parts.push_back(Bytes::from_slice(self.env, b"\">\n"));
         self
     }
 
@@ -650,8 +631,7 @@ impl<'a> MarkdownBuilder<'a> {
             .push_back(Bytes::from_slice(self.env, b"<span class=\""));
         self.parts
             .push_back(Bytes::from_slice(self.env, classes.as_bytes()));
-        self.parts
-            .push_back(Bytes::from_slice(self.env, b"\">"));
+        self.parts.push_back(Bytes::from_slice(self.env, b"\">"));
         self
     }
 
@@ -697,8 +677,7 @@ impl<'a> MarkdownBuilder<'a> {
                 .push_back(Bytes::from_slice(self.env, b" total="));
             self.parts.push_back(u32_to_bytes(self.env, t));
         }
-        self.parts
-            .push_back(Bytes::from_slice(self.env, b"}}"));
+        self.parts.push_back(Bytes::from_slice(self.env, b"}}"));
         self
     }
 
@@ -715,8 +694,7 @@ impl<'a> MarkdownBuilder<'a> {
         self.parts
             .push_back(Bytes::from_slice(self.env, b"\" index="));
         self.parts.push_back(u32_to_bytes(self.env, index));
-        self.parts
-            .push_back(Bytes::from_slice(self.env, b"}}"));
+        self.parts.push_back(Bytes::from_slice(self.env, b"}}"));
         self
     }
 
@@ -742,8 +720,7 @@ impl<'a> MarkdownBuilder<'a> {
             .push_back(Bytes::from_slice(self.env, b" placeholder=\""));
         self.parts
             .push_back(Bytes::from_slice(self.env, placeholder.as_bytes()));
-        self.parts
-            .push_back(Bytes::from_slice(self.env, b"\"}}"));
+        self.parts.push_back(Bytes::from_slice(self.env, b"\"}}"));
         self
     }
 
@@ -752,13 +729,7 @@ impl<'a> MarkdownBuilder<'a> {
     /// Used for page-based progressive loading (e.g., comment threads, list views).
     ///
     /// Creates: `{{continue collection="name" page=N per_page=M total=T}}`
-    pub fn continue_page(
-        mut self,
-        collection: &str,
-        page: u32,
-        per_page: u32,
-        total: u32,
-    ) -> Self {
+    pub fn continue_page(mut self, collection: &str, page: u32, per_page: u32, total: u32) -> Self {
         self.parts
             .push_back(Bytes::from_slice(self.env, b"{{continue collection=\""));
         self.parts
@@ -772,8 +743,7 @@ impl<'a> MarkdownBuilder<'a> {
         self.parts
             .push_back(Bytes::from_slice(self.env, b" total="));
         self.parts.push_back(u32_to_bytes(self.env, total));
-        self.parts
-            .push_back(Bytes::from_slice(self.env, b"}}"));
+        self.parts.push_back(Bytes::from_slice(self.env, b"}}"));
         self
     }
 
@@ -799,8 +769,7 @@ impl<'a> MarkdownBuilder<'a> {
             .push_back(Bytes::from_slice(self.env, b"{{render path=\""));
         self.parts
             .push_back(Bytes::from_slice(self.env, path.as_bytes()));
-        self.parts
-            .push_back(Bytes::from_slice(self.env, b"\"}}"));
+        self.parts.push_back(Bytes::from_slice(self.env, b"\"}}"));
         self
     }
 
@@ -837,9 +806,7 @@ mod tests {
     #[test]
     fn test_render_link() {
         let env = Env::default();
-        let output = MarkdownBuilder::new(&env)
-            .render_link("Home", "/")
-            .build();
+        let output = MarkdownBuilder::new(&env).render_link("Home", "/").build();
         // "[Home](render:/)" = 16 bytes
         assert_eq!(output.len(), 16);
     }
@@ -1005,9 +972,7 @@ mod tests {
     #[test]
     fn test_redirect() {
         let env = Env::default();
-        let output = MarkdownBuilder::new(&env)
-            .redirect("/b/0")
-            .build();
+        let output = MarkdownBuilder::new(&env).redirect("/b/0").build();
         // <input type="hidden" name="_redirect" value="/b/0" />\n
         assert!(output.len() > 45);
     }

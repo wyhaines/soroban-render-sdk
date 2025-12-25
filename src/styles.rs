@@ -56,12 +56,10 @@ impl<'a> StyleBuilder<'a> {
             .push_back(Bytes::from_slice(self.env, b":root { --"));
         self.parts
             .push_back(Bytes::from_slice(self.env, name.as_bytes()));
-        self.parts
-            .push_back(Bytes::from_slice(self.env, b": "));
+        self.parts.push_back(Bytes::from_slice(self.env, b": "));
         self.parts
             .push_back(Bytes::from_slice(self.env, value.as_bytes()));
-        self.parts
-            .push_back(Bytes::from_slice(self.env, b"; }\n"));
+        self.parts.push_back(Bytes::from_slice(self.env, b"; }\n"));
         self
     }
 
@@ -82,16 +80,13 @@ impl<'a> StyleBuilder<'a> {
     ///
     /// Must be used between `.root_vars_start()` and `.root_vars_end()`.
     pub fn var(mut self, name: &str, value: &str) -> Self {
-        self.parts
-            .push_back(Bytes::from_slice(self.env, b"  --"));
+        self.parts.push_back(Bytes::from_slice(self.env, b"  --"));
         self.parts
             .push_back(Bytes::from_slice(self.env, name.as_bytes()));
-        self.parts
-            .push_back(Bytes::from_slice(self.env, b": "));
+        self.parts.push_back(Bytes::from_slice(self.env, b": "));
         self.parts
             .push_back(Bytes::from_slice(self.env, value.as_bytes()));
-        self.parts
-            .push_back(Bytes::from_slice(self.env, b";\n"));
+        self.parts.push_back(Bytes::from_slice(self.env, b";\n"));
         self
     }
 
@@ -99,8 +94,7 @@ impl<'a> StyleBuilder<'a> {
     ///
     /// Creates: `}`
     pub fn root_vars_end(mut self) -> Self {
-        self.parts
-            .push_back(Bytes::from_slice(self.env, b"}\n"));
+        self.parts.push_back(Bytes::from_slice(self.env, b"}\n"));
         self
     }
 
@@ -121,12 +115,10 @@ impl<'a> StyleBuilder<'a> {
     pub fn rule(mut self, selector: &str, properties: &str) -> Self {
         self.parts
             .push_back(Bytes::from_slice(self.env, selector.as_bytes()));
-        self.parts
-            .push_back(Bytes::from_slice(self.env, b" { "));
+        self.parts.push_back(Bytes::from_slice(self.env, b" { "));
         self.parts
             .push_back(Bytes::from_slice(self.env, properties.as_bytes()));
-        self.parts
-            .push_back(Bytes::from_slice(self.env, b" }\n"));
+        self.parts.push_back(Bytes::from_slice(self.env, b" }\n"));
         self
     }
 
@@ -138,8 +130,7 @@ impl<'a> StyleBuilder<'a> {
     pub fn rule_start(mut self, selector: &str) -> Self {
         self.parts
             .push_back(Bytes::from_slice(self.env, selector.as_bytes()));
-        self.parts
-            .push_back(Bytes::from_slice(self.env, b" {\n"));
+        self.parts.push_back(Bytes::from_slice(self.env, b" {\n"));
         self
     }
 
@@ -149,16 +140,13 @@ impl<'a> StyleBuilder<'a> {
     ///
     /// Must be used between `.rule_start()` and `.rule_end()`.
     pub fn prop(mut self, property: &str, value: &str) -> Self {
-        self.parts
-            .push_back(Bytes::from_slice(self.env, b"  "));
+        self.parts.push_back(Bytes::from_slice(self.env, b"  "));
         self.parts
             .push_back(Bytes::from_slice(self.env, property.as_bytes()));
-        self.parts
-            .push_back(Bytes::from_slice(self.env, b": "));
+        self.parts.push_back(Bytes::from_slice(self.env, b": "));
         self.parts
             .push_back(Bytes::from_slice(self.env, value.as_bytes()));
-        self.parts
-            .push_back(Bytes::from_slice(self.env, b";\n"));
+        self.parts.push_back(Bytes::from_slice(self.env, b";\n"));
         self
     }
 
@@ -166,8 +154,7 @@ impl<'a> StyleBuilder<'a> {
     ///
     /// Creates: `}`
     pub fn rule_end(mut self) -> Self {
-        self.parts
-            .push_back(Bytes::from_slice(self.env, b"}\n"));
+        self.parts.push_back(Bytes::from_slice(self.env, b"}\n"));
         self
     }
 
@@ -193,8 +180,7 @@ impl<'a> StyleBuilder<'a> {
             .push_back(Bytes::from_slice(self.env, b"@media "));
         self.parts
             .push_back(Bytes::from_slice(self.env, condition.as_bytes()));
-        self.parts
-            .push_back(Bytes::from_slice(self.env, b" {\n"));
+        self.parts.push_back(Bytes::from_slice(self.env, b" {\n"));
         self
     }
 
@@ -202,8 +188,7 @@ impl<'a> StyleBuilder<'a> {
     ///
     /// Creates: `}`
     pub fn media_end(mut self) -> Self {
-        self.parts
-            .push_back(Bytes::from_slice(self.env, b"}\n"));
+        self.parts.push_back(Bytes::from_slice(self.env, b"}\n"));
         self
     }
 
@@ -266,19 +251,16 @@ impl<'a> StyleBuilder<'a> {
     ///
     /// Creates: `/* text */`
     pub fn comment(mut self, text: &str) -> Self {
-        self.parts
-            .push_back(Bytes::from_slice(self.env, b"/* "));
+        self.parts.push_back(Bytes::from_slice(self.env, b"/* "));
         self.parts
             .push_back(Bytes::from_slice(self.env, text.as_bytes()));
-        self.parts
-            .push_back(Bytes::from_slice(self.env, b" */\n"));
+        self.parts.push_back(Bytes::from_slice(self.env, b" */\n"));
         self
     }
 
     /// Add a newline for formatting.
     pub fn newline(mut self) -> Self {
-        self.parts
-            .push_back(Bytes::from_slice(self.env, b"\n"));
+        self.parts.push_back(Bytes::from_slice(self.env, b"\n"));
         self
     }
 
@@ -335,9 +317,7 @@ mod tests {
     #[test]
     fn test_rule() {
         let env = Env::default();
-        let output = StyleBuilder::new(&env)
-            .rule("h1", "color: blue;")
-            .build();
+        let output = StyleBuilder::new(&env).rule("h1", "color: blue;").build();
         let css = bytes_to_string(&output);
         assert_eq!(css, "h1 { color: blue; }\n");
     }
@@ -414,9 +394,7 @@ mod tests {
     #[test]
     fn test_comment() {
         let env = Env::default();
-        let output = StyleBuilder::new(&env)
-            .comment("Theme styles")
-            .build();
+        let output = StyleBuilder::new(&env).comment("Theme styles").build();
         let css = bytes_to_string(&output);
         assert_eq!(css, "/* Theme styles */\n");
     }
