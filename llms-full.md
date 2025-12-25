@@ -128,7 +128,19 @@ CONSTRUCTOR: `MarkdownBuilder::new(env: &Env) -> Self`
 | Method | Signature | Output |
 |--------|-----------|--------|
 | `input` | `(name: &str, placeholder: &str) -> Self` | `<input name="name" placeholder="placeholder" />` |
-| `textarea` | `(name: &str, rows: u32, placeholder: &str) -> Self` | `<textarea name="name" rows="N" placeholder="placeholder"></textarea>` |
+| `hidden_input` | `(name: &str, value: &str) -> Self` | `<input type="hidden" name="name" value="value" />` |
+| `redirect` | `(path: &str) -> Self` | `<input type="hidden" name="_redirect" value="path" />` |
+| `textarea` | `(name: &str, rows: u8, placeholder: &str) -> Self` | `<textarea name="name" rows="N" placeholder="placeholder"></textarea>` |
+
+### HTML Containers
+
+| Method | Signature | Output |
+|--------|-----------|--------|
+| `div_start` | `(classes: &str) -> Self` | `<div class="classes">` |
+| `div_start_styled` | `(classes: &str, style: &str) -> Self` | `<div class="classes" style="style">` |
+| `div_end` | `() -> Self` | `</div>` |
+| `span_start` | `(classes: &str) -> Self` | `<span class="classes">` |
+| `span_end` | `() -> Self` | `</span>` |
 
 ### Progressive Loading
 
@@ -138,6 +150,9 @@ CONSTRUCTOR: `MarkdownBuilder::new(env: &Env) -> Self`
 | `chunk_ref` | `(collection: &str, index: u32) -> Self` | `{{chunk collection="name" index=N}}` |
 | `chunk_ref_placeholder` | `(collection: &str, index: u32, placeholder: &str) -> Self` | `{{chunk collection="name" index=N placeholder="text"}}` |
 | `continue_page` | `(collection: &str, page: u32, per_page: u32, total: u32) -> Self` | `{{continue collection="name" page=N per_page=M total=T}}` |
+| `render_continue` | `(path: &str) -> Self` | `{{render path="path"}}` |
+
+WATERFALL LOADING: Use `render_continue` to trigger additional render() calls. The viewer fetches the path and inserts the result inline.
 
 ---
 
