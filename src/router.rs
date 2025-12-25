@@ -32,7 +32,7 @@ use soroban_sdk::{Bytes, Env, String};
 // Path Utilities
 // ============================================================================
 
-/// Convert an Option<String> path to Bytes, defaulting to "/" if None.
+/// Convert an `Option<String>` path to Bytes, defaulting to "/" if None.
 pub fn path_to_bytes(env: &Env, path: &Option<String>) -> Bytes {
     match path {
         Some(p) => string_to_bytes(env, p),
@@ -107,7 +107,7 @@ pub fn parse_id(path: &Bytes, prefix: &[u8]) -> Option<u32> {
 
     for i in prefix_len..path.len() {
         if let Some(b) = path.get(i) {
-            if b >= b'0' && b <= b'9' {
+            if b.is_ascii_digit() {
                 has_digit = true;
                 result = result * 10 + (b - b'0') as u32;
             } else if b == b'/' {
@@ -161,31 +161,30 @@ impl<'a> Request<'a> {
         let path_segments = split_path_bytes(self.env, &self.path);
 
         // Iterate through pattern segments looking for {key}
-        let mut path_idx = 0u32;
-        for pattern_seg in pattern_segments.iter() {
+        for (path_idx, pattern_seg) in pattern_segments.iter().enumerate() {
+            let path_idx = path_idx as u32;
             if path_idx >= path_segments.len() {
                 break;
             }
 
             // Check if this is a parameter segment
-            if pattern_seg.len() > 2 {
-                if pattern_seg.get(0) == Some(b'{')
-                    && pattern_seg.get(pattern_seg.len() - 1) == Some(b'}')
-                {
-                    // Extract parameter name
-                    let mut param_name = Bytes::new(self.env);
-                    for i in 1..pattern_seg.len() - 1 {
-                        if let Some(b) = pattern_seg.get(i) {
-                            param_name.push_back(b);
-                        }
+            if pattern_seg.len() > 2
+                && pattern_seg.get(0) == Some(b'{')
+                && pattern_seg.get(pattern_seg.len() - 1) == Some(b'}')
+            {
+                // Extract parameter name
+                let mut param_name = Bytes::new(self.env);
+                for i in 1..pattern_seg.len() - 1 {
+                    if let Some(b) = pattern_seg.get(i) {
+                        param_name.push_back(b);
                     }
+                }
 
-                    // Check if this matches the requested key
-                    if bytes_eq_slice(&param_name, key) {
-                        if let Some(path_seg) = path_segments.get(path_idx) {
-                            return Some(path_seg);
-                        }
-                    }
+                // Check if this matches the requested key
+                if bytes_eq_slice(&param_name, key)
+                    && let Some(path_seg) = path_segments.get(path_idx)
+                {
+                    return Some(path_seg);
                 }
             }
 
@@ -205,8 +204,6 @@ impl<'a> Request<'a> {
                     return Some(result);
                 }
             }
-
-            path_idx += 1;
         }
 
         None
@@ -332,7 +329,7 @@ fn pattern_matches(env: &Env, path: &Bytes, pattern: &[u8]) -> bool {
     let path_segments = split_path_bytes(env, path);
 
     // Check for wildcard
-    let has_wildcard = pattern.iter().any(|&b| b == b'*');
+    let has_wildcard = pattern.contains(&b'*');
 
     // If no wildcard, lengths must match
     if !has_wildcard && pattern_segments.len() != path_segments.len() {
@@ -361,12 +358,11 @@ fn pattern_matches(env: &Env, path: &Bytes, pattern: &[u8]) -> bool {
         };
 
         // Parameter matches any segment
-        if pattern_seg.len() > 2 {
-            if pattern_seg.get(0) == Some(b'{')
-                && pattern_seg.get(pattern_seg.len() - 1) == Some(b'}')
-            {
-                continue;
-            }
+        if pattern_seg.len() > 2
+            && pattern_seg.get(0) == Some(b'{')
+            && pattern_seg.get(pattern_seg.len() - 1) == Some(b'}')
+        {
+            continue;
         }
 
         // Static segment must match exactly
@@ -390,7 +386,7 @@ fn split_path(env: &Env, path: &[u8]) -> soroban_sdk::Vec<Bytes> {
 
     for &b in path {
         if b == b'/' {
-            if current.len() > 0 {
+            if !current.is_empty() {
                 segments.push_back(current);
                 current = Bytes::new(env);
             }
@@ -399,7 +395,7 @@ fn split_path(env: &Env, path: &[u8]) -> soroban_sdk::Vec<Bytes> {
         }
     }
 
-    if current.len() > 0 {
+    if !current.is_empty() {
         segments.push_back(current);
     }
 
@@ -414,7 +410,7 @@ fn split_path_bytes(env: &Env, path: &Bytes) -> soroban_sdk::Vec<Bytes> {
     for i in 0..path.len() {
         if let Some(b) = path.get(i) {
             if b == b'/' {
-                if current.len() > 0 {
+                if !current.is_empty() {
                     segments.push_back(current);
                     current = Bytes::new(env);
                 }
@@ -424,7 +420,7 @@ fn split_path_bytes(env: &Env, path: &Bytes) -> soroban_sdk::Vec<Bytes> {
         }
     }
 
-    if current.len() > 0 {
+    if !current.is_empty() {
         segments.push_back(current);
     }
 
@@ -446,14 +442,14 @@ fn bytes_eq_slice(bytes: &Bytes, slice: &[u8]) -> bool {
 
 /// Parse Bytes as a u32.
 fn parse_bytes_as_u32(bytes: &Bytes) -> Option<u32> {
-    if bytes.len() == 0 {
+    if bytes.is_empty() {
         return None;
     }
 
     let mut result: u32 = 0;
     for i in 0..bytes.len() {
         if let Some(b) = bytes.get(i) {
-            if b >= b'0' && b <= b'9' {
+            if b.is_ascii_digit() {
                 result = result * 10 + (b - b'0') as u32;
             } else {
                 return None;

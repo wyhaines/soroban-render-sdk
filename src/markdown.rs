@@ -20,7 +20,7 @@ use soroban_sdk::{Bytes, Env, String, Vec};
 
 /// A builder for constructing markdown content.
 ///
-/// Uses the Vec<Bytes> accumulator pattern internally for efficient
+/// Uses the `Vec<Bytes>` accumulator pattern internally for efficient
 /// string building in Soroban's no_std environment.
 pub struct MarkdownBuilder<'a> {
     env: &'a Env,

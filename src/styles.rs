@@ -21,7 +21,7 @@ use soroban_sdk::{Bytes, Env, Vec};
 
 /// A builder for constructing CSS stylesheets.
 ///
-/// Uses the Vec<Bytes> accumulator pattern internally for efficient
+/// Uses the `Vec<Bytes>` accumulator pattern internally for efficient
 /// string building in Soroban's no_std environment.
 pub struct StyleBuilder<'a> {
     env: &'a Env,
