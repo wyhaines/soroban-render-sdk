@@ -507,6 +507,28 @@ impl<'a> MarkdownBuilder<'a> {
         self
     }
 
+    /// Add an input element with a pre-populated numeric value.
+    ///
+    /// Creates: `<input name="name" placeholder="placeholder" value="123" />`
+    ///
+    /// Use this when editing existing numeric data so users can see and modify the current value.
+    pub fn input_with_value_number(mut self, name: &str, placeholder: &str, value: u32) -> Self {
+        self.parts
+            .push_back(Bytes::from_slice(self.env, b"<input name=\""));
+        self.parts
+            .push_back(Bytes::from_slice(self.env, name.as_bytes()));
+        self.parts
+            .push_back(Bytes::from_slice(self.env, b"\" placeholder=\""));
+        self.parts
+            .push_back(Bytes::from_slice(self.env, placeholder.as_bytes()));
+        self.parts
+            .push_back(Bytes::from_slice(self.env, b"\" value=\""));
+        self.parts.push_back(u32_to_bytes(self.env, value));
+        self.parts
+            .push_back(Bytes::from_slice(self.env, b"\" />\n"));
+        self
+    }
+
     /// Add a hidden input element.
     ///
     /// Creates: `<input type="hidden" name="name" value="value" />`
