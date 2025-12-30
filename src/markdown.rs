@@ -462,6 +462,51 @@ impl<'a> MarkdownBuilder<'a> {
         self
     }
 
+    /// Add an input element with a pre-populated value.
+    ///
+    /// Creates: `<input name="name" placeholder="placeholder" value="value" />`
+    ///
+    /// Use this when editing existing data so users can see and modify the current value.
+    pub fn input_with_value(mut self, name: &str, placeholder: &str, value: &str) -> Self {
+        self.parts
+            .push_back(Bytes::from_slice(self.env, b"<input name=\""));
+        self.parts
+            .push_back(Bytes::from_slice(self.env, name.as_bytes()));
+        self.parts
+            .push_back(Bytes::from_slice(self.env, b"\" placeholder=\""));
+        self.parts
+            .push_back(Bytes::from_slice(self.env, placeholder.as_bytes()));
+        self.parts
+            .push_back(Bytes::from_slice(self.env, b"\" value=\""));
+        self.parts
+            .push_back(Bytes::from_slice(self.env, value.as_bytes()));
+        self.parts
+            .push_back(Bytes::from_slice(self.env, b"\" />\n"));
+        self
+    }
+
+    /// Add an input element with a pre-populated value from a soroban String.
+    ///
+    /// Creates: `<input name="name" placeholder="placeholder" value="value" />`
+    ///
+    /// Use this when editing existing data so users can see and modify the current value.
+    pub fn input_with_value_string(mut self, name: &str, placeholder: &str, value: &String) -> Self {
+        self.parts
+            .push_back(Bytes::from_slice(self.env, b"<input name=\""));
+        self.parts
+            .push_back(Bytes::from_slice(self.env, name.as_bytes()));
+        self.parts
+            .push_back(Bytes::from_slice(self.env, b"\" placeholder=\""));
+        self.parts
+            .push_back(Bytes::from_slice(self.env, placeholder.as_bytes()));
+        self.parts
+            .push_back(Bytes::from_slice(self.env, b"\" value=\""));
+        self.parts.push_back(string_to_bytes(self.env, value));
+        self.parts
+            .push_back(Bytes::from_slice(self.env, b"\" />\n"));
+        self
+    }
+
     /// Add a hidden input element.
     ///
     /// Creates: `<input type="hidden" name="name" value="value" />`
@@ -523,6 +568,159 @@ impl<'a> MarkdownBuilder<'a> {
             .push_back(Bytes::from_slice(self.env, placeholder.as_bytes()));
         self.parts
             .push_back(Bytes::from_slice(self.env, b"\"></textarea>\n"));
+        self
+    }
+
+    /// Add a textarea element with a pre-populated value.
+    ///
+    /// Creates: `<textarea name="name" rows="N" placeholder="placeholder">value</textarea>`
+    ///
+    /// Use this when editing existing data so users can see and modify the current value.
+    pub fn textarea_with_value(mut self, name: &str, rows: u8, placeholder: &str, value: &str) -> Self {
+        self.parts
+            .push_back(Bytes::from_slice(self.env, b"<textarea name=\""));
+        self.parts
+            .push_back(Bytes::from_slice(self.env, name.as_bytes()));
+        self.parts
+            .push_back(Bytes::from_slice(self.env, b"\" rows=\""));
+        self.parts.push_back(u32_to_bytes(self.env, rows as u32));
+        self.parts
+            .push_back(Bytes::from_slice(self.env, b"\" placeholder=\""));
+        self.parts
+            .push_back(Bytes::from_slice(self.env, placeholder.as_bytes()));
+        self.parts
+            .push_back(Bytes::from_slice(self.env, b"\">"));
+        self.parts
+            .push_back(Bytes::from_slice(self.env, value.as_bytes()));
+        self.parts
+            .push_back(Bytes::from_slice(self.env, b"</textarea>\n"));
+        self
+    }
+
+    /// Add a textarea element with a pre-populated value from a soroban String.
+    ///
+    /// Creates: `<textarea name="name" rows="N" placeholder="placeholder">value</textarea>`
+    ///
+    /// Use this when editing existing data so users can see and modify the current value.
+    pub fn textarea_with_value_string(
+        mut self,
+        name: &str,
+        rows: u8,
+        placeholder: &str,
+        value: &String,
+    ) -> Self {
+        self.parts
+            .push_back(Bytes::from_slice(self.env, b"<textarea name=\""));
+        self.parts
+            .push_back(Bytes::from_slice(self.env, name.as_bytes()));
+        self.parts
+            .push_back(Bytes::from_slice(self.env, b"\" rows=\""));
+        self.parts.push_back(u32_to_bytes(self.env, rows as u32));
+        self.parts
+            .push_back(Bytes::from_slice(self.env, b"\" placeholder=\""));
+        self.parts
+            .push_back(Bytes::from_slice(self.env, placeholder.as_bytes()));
+        self.parts
+            .push_back(Bytes::from_slice(self.env, b"\">"));
+        self.parts.push_back(string_to_bytes(self.env, value));
+        self.parts
+            .push_back(Bytes::from_slice(self.env, b"</textarea>\n"));
+        self
+    }
+
+    /// Add a textarea element with markdown editor hint.
+    ///
+    /// Creates: `<textarea name="name" data-editor="markdown" rows="N" placeholder="placeholder"></textarea>`
+    ///
+    /// When rendered in a viewer that supports it, this will display a rich markdown editor
+    /// instead of a plain textarea. Falls back to a regular textarea in unsupported viewers.
+    pub fn textarea_markdown(mut self, name: &str, rows: u8, placeholder: &str) -> Self {
+        self.parts
+            .push_back(Bytes::from_slice(self.env, b"<textarea name=\""));
+        self.parts
+            .push_back(Bytes::from_slice(self.env, name.as_bytes()));
+        self.parts.push_back(Bytes::from_slice(
+            self.env,
+            b"\" data-editor=\"markdown\" rows=\"",
+        ));
+        self.parts.push_back(u32_to_bytes(self.env, rows as u32));
+        self.parts
+            .push_back(Bytes::from_slice(self.env, b"\" placeholder=\""));
+        self.parts
+            .push_back(Bytes::from_slice(self.env, placeholder.as_bytes()));
+        self.parts
+            .push_back(Bytes::from_slice(self.env, b"\"></textarea>\n"));
+        self
+    }
+
+    /// Add a textarea element with markdown editor hint and a pre-populated value.
+    ///
+    /// Creates: `<textarea name="name" data-editor="markdown" rows="N" placeholder="placeholder">value</textarea>`
+    ///
+    /// When rendered in a viewer that supports it, this will display a rich markdown editor
+    /// instead of a plain textarea. Falls back to a regular textarea in unsupported viewers.
+    /// Use this when editing existing data so users can see and modify the current value.
+    pub fn textarea_markdown_with_value(
+        mut self,
+        name: &str,
+        rows: u8,
+        placeholder: &str,
+        value: &str,
+    ) -> Self {
+        self.parts
+            .push_back(Bytes::from_slice(self.env, b"<textarea name=\""));
+        self.parts
+            .push_back(Bytes::from_slice(self.env, name.as_bytes()));
+        self.parts.push_back(Bytes::from_slice(
+            self.env,
+            b"\" data-editor=\"markdown\" rows=\"",
+        ));
+        self.parts.push_back(u32_to_bytes(self.env, rows as u32));
+        self.parts
+            .push_back(Bytes::from_slice(self.env, b"\" placeholder=\""));
+        self.parts
+            .push_back(Bytes::from_slice(self.env, placeholder.as_bytes()));
+        self.parts
+            .push_back(Bytes::from_slice(self.env, b"\">"));
+        self.parts
+            .push_back(Bytes::from_slice(self.env, value.as_bytes()));
+        self.parts
+            .push_back(Bytes::from_slice(self.env, b"</textarea>\n"));
+        self
+    }
+
+    /// Add a textarea element with markdown editor hint and a pre-populated value from a soroban String.
+    ///
+    /// Creates: `<textarea name="name" data-editor="markdown" rows="N" placeholder="placeholder">value</textarea>`
+    ///
+    /// When rendered in a viewer that supports it, this will display a rich markdown editor
+    /// instead of a plain textarea. Falls back to a regular textarea in unsupported viewers.
+    /// Use this when editing existing data so users can see and modify the current value.
+    pub fn textarea_markdown_with_value_string(
+        mut self,
+        name: &str,
+        rows: u8,
+        placeholder: &str,
+        value: &String,
+    ) -> Self {
+        self.parts
+            .push_back(Bytes::from_slice(self.env, b"<textarea name=\""));
+        self.parts
+            .push_back(Bytes::from_slice(self.env, name.as_bytes()));
+        self.parts.push_back(Bytes::from_slice(
+            self.env,
+            b"\" data-editor=\"markdown\" rows=\"",
+        ));
+        self.parts.push_back(u32_to_bytes(self.env, rows as u32));
+        self.parts
+            .push_back(Bytes::from_slice(self.env, b"\" placeholder=\""));
+        self.parts
+            .push_back(Bytes::from_slice(self.env, placeholder.as_bytes()));
+        self.parts
+            .push_back(Bytes::from_slice(self.env, b"\">"));
+        self.parts.push_back(string_to_bytes(self.env, value));
+        self.parts
+            .push_back(Bytes::from_slice(self.env, b"</textarea>\n"));
         self
     }
 
@@ -870,6 +1068,47 @@ mod tests {
             .input("name", "Enter name")
             .build();
         assert!(output.len() > 20);
+    }
+
+    #[test]
+    fn test_textarea_markdown() {
+        let env = Env::default();
+        let output = MarkdownBuilder::new(&env)
+            .textarea_markdown("content", 10, "Enter markdown...")
+            .build();
+        // <textarea name="content" data-editor="markdown" rows="10" placeholder="Enter markdown..."></textarea>\n
+        // Should contain the data-editor attribute
+        assert!(output.len() > 60);
+    }
+
+    #[test]
+    fn test_input_with_value() {
+        let env = Env::default();
+        let output = MarkdownBuilder::new(&env)
+            .input_with_value("name", "Enter name", "John Doe")
+            .build();
+        // <input name="name" placeholder="Enter name" value="John Doe" />\n
+        assert!(output.len() > 40);
+    }
+
+    #[test]
+    fn test_textarea_with_value() {
+        let env = Env::default();
+        let output = MarkdownBuilder::new(&env)
+            .textarea_with_value("bio", 5, "Enter bio", "Hello world")
+            .build();
+        // <textarea name="bio" rows="5" placeholder="Enter bio">Hello world</textarea>\n
+        assert!(output.len() > 50);
+    }
+
+    #[test]
+    fn test_textarea_markdown_with_value() {
+        let env = Env::default();
+        let output = MarkdownBuilder::new(&env)
+            .textarea_markdown_with_value("content", 10, "Enter markdown...", "# Hello")
+            .build();
+        // <textarea name="content" data-editor="markdown" rows="10" placeholder="Enter markdown..."># Hello</textarea>\n
+        assert!(output.len() > 70);
     }
 
     #[test]
