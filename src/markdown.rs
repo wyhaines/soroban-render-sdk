@@ -490,7 +490,12 @@ impl<'a> MarkdownBuilder<'a> {
     /// Creates: `<input name="name" placeholder="placeholder" value="value" />`
     ///
     /// Use this when editing existing data so users can see and modify the current value.
-    pub fn input_with_value_string(mut self, name: &str, placeholder: &str, value: &String) -> Self {
+    pub fn input_with_value_string(
+        mut self,
+        name: &str,
+        placeholder: &str,
+        value: &String,
+    ) -> Self {
         self.parts
             .push_back(Bytes::from_slice(self.env, b"<input name=\""));
         self.parts
@@ -559,8 +564,7 @@ impl<'a> MarkdownBuilder<'a> {
             .push_back(Bytes::from_slice(self.env, b"<select name=\""));
         self.parts
             .push_back(Bytes::from_slice(self.env, name.as_bytes()));
-        self.parts
-            .push_back(Bytes::from_slice(self.env, b"\">\n"));
+        self.parts.push_back(Bytes::from_slice(self.env, b"\">\n"));
 
         if current_value {
             self.parts.push_back(Bytes::from_slice(
@@ -635,7 +639,13 @@ impl<'a> MarkdownBuilder<'a> {
     /// Creates: `<textarea name="name" rows="N" placeholder="placeholder">value</textarea>`
     ///
     /// Use this when editing existing data so users can see and modify the current value.
-    pub fn textarea_with_value(mut self, name: &str, rows: u8, placeholder: &str, value: &str) -> Self {
+    pub fn textarea_with_value(
+        mut self,
+        name: &str,
+        rows: u8,
+        placeholder: &str,
+        value: &str,
+    ) -> Self {
         self.parts
             .push_back(Bytes::from_slice(self.env, b"<textarea name=\""));
         self.parts
@@ -647,8 +657,7 @@ impl<'a> MarkdownBuilder<'a> {
             .push_back(Bytes::from_slice(self.env, b"\" placeholder=\""));
         self.parts
             .push_back(Bytes::from_slice(self.env, placeholder.as_bytes()));
-        self.parts
-            .push_back(Bytes::from_slice(self.env, b"\">"));
+        self.parts.push_back(Bytes::from_slice(self.env, b"\">"));
         self.parts
             .push_back(Bytes::from_slice(self.env, value.as_bytes()));
         self.parts
@@ -679,8 +688,7 @@ impl<'a> MarkdownBuilder<'a> {
             .push_back(Bytes::from_slice(self.env, b"\" placeholder=\""));
         self.parts
             .push_back(Bytes::from_slice(self.env, placeholder.as_bytes()));
-        self.parts
-            .push_back(Bytes::from_slice(self.env, b"\">"));
+        self.parts.push_back(Bytes::from_slice(self.env, b"\">"));
         self.parts.push_back(string_to_bytes(self.env, value));
         self.parts
             .push_back(Bytes::from_slice(self.env, b"</textarea>\n"));
@@ -739,8 +747,7 @@ impl<'a> MarkdownBuilder<'a> {
             .push_back(Bytes::from_slice(self.env, b"\" placeholder=\""));
         self.parts
             .push_back(Bytes::from_slice(self.env, placeholder.as_bytes()));
-        self.parts
-            .push_back(Bytes::from_slice(self.env, b"\">"));
+        self.parts.push_back(Bytes::from_slice(self.env, b"\">"));
         self.parts
             .push_back(Bytes::from_slice(self.env, value.as_bytes()));
         self.parts
@@ -775,8 +782,7 @@ impl<'a> MarkdownBuilder<'a> {
             .push_back(Bytes::from_slice(self.env, b"\" placeholder=\""));
         self.parts
             .push_back(Bytes::from_slice(self.env, placeholder.as_bytes()));
-        self.parts
-            .push_back(Bytes::from_slice(self.env, b"\">"));
+        self.parts.push_back(Bytes::from_slice(self.env, b"\">"));
         self.parts.push_back(string_to_bytes(self.env, value));
         self.parts
             .push_back(Bytes::from_slice(self.env, b"</textarea>\n"));
