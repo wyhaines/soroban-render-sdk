@@ -41,7 +41,7 @@ pub use crate::bytes::{
     i256_to_bytes,
     i256_to_hex,
     string_to_bytes,
-    // String convenience wrappers
+    // String convenience wrappers (soroban_sdk::String)
     string_to_i32,
     string_to_i64,
     string_to_i128,
@@ -50,6 +50,15 @@ pub use crate::bytes::{
     string_to_u64,
     string_to_u128,
     string_to_u256,
+    // &str convenience wrappers
+    str_to_i32,
+    str_to_i64,
+    str_to_i128,
+    str_to_i256,
+    str_to_u32,
+    str_to_u64,
+    str_to_u128,
+    str_to_u256,
     u32_to_bytes,
     u32_to_hex,
     u64_to_bytes,

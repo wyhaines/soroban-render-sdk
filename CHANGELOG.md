@@ -27,6 +27,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Decimal parsing: `bytes_to_u32`, `bytes_to_i32`, `bytes_to_u64`, `bytes_to_i64`, `bytes_to_u128`, `bytes_to_i128`, `bytes_to_u256`, `bytes_to_i256`
 - Hex parsing: `hex_to_u32`, `hex_to_i32`, `hex_to_u64`, `hex_to_i64`, `hex_to_u128`, `hex_to_i128`, `hex_to_u256`, `hex_to_i256`
 - String parsing: `string_to_u32`, `string_to_i32`, `string_to_u64`, `string_to_i64`, `string_to_u128`, `string_to_i128`, `string_to_u256`, `string_to_i256`
+- &str parsing: `str_to_u32`, `str_to_i32`, `str_to_u64`, `str_to_i64`, `str_to_u128`, `str_to_i128`, `str_to_u256`, `str_to_i256`
 
 ## [0.1.0] - 2024-12-25
 

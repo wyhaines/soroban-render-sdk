@@ -1762,6 +1762,140 @@ pub fn string_to_i256(env: &Env, s: &String) -> Option<I256> {
     bytes_to_i256(env, &bytes)
 }
 
+// =============================================================================
+// &str Convenience Wrappers
+// =============================================================================
+
+/// Parse a &str to a u32.
+///
+/// Converts the string slice directly to Bytes and parses.
+/// More ergonomic than `string_to_u32` when working with string literals.
+///
+/// # Example
+///
+/// ```rust,ignore
+/// let n = str_to_u32(&env, "12345");
+/// // n is Some(12345)
+/// ```
+pub fn str_to_u32(env: &Env, s: &str) -> Option<u32> {
+    let bytes = Bytes::from_slice(env, s.as_bytes());
+    bytes_to_u32(&bytes)
+}
+
+/// Parse a &str to an i32.
+///
+/// Converts the string slice directly to Bytes and parses.
+/// Handles optional leading minus sign.
+///
+/// # Example
+///
+/// ```rust,ignore
+/// let n = str_to_i32(&env, "-12345");
+/// // n is Some(-12345)
+/// ```
+pub fn str_to_i32(env: &Env, s: &str) -> Option<i32> {
+    let bytes = Bytes::from_slice(env, s.as_bytes());
+    bytes_to_i32(&bytes)
+}
+
+/// Parse a &str to a u64.
+///
+/// Converts the string slice directly to Bytes and parses.
+///
+/// # Example
+///
+/// ```rust,ignore
+/// let n = str_to_u64(&env, "12345");
+/// // n is Some(12345)
+/// ```
+pub fn str_to_u64(env: &Env, s: &str) -> Option<u64> {
+    let bytes = Bytes::from_slice(env, s.as_bytes());
+    bytes_to_u64(&bytes)
+}
+
+/// Parse a &str to an i64.
+///
+/// Converts the string slice directly to Bytes and parses.
+/// Handles optional leading minus sign.
+///
+/// # Example
+///
+/// ```rust,ignore
+/// let n = str_to_i64(&env, "-12345");
+/// // n is Some(-12345)
+/// ```
+pub fn str_to_i64(env: &Env, s: &str) -> Option<i64> {
+    let bytes = Bytes::from_slice(env, s.as_bytes());
+    bytes_to_i64(&bytes)
+}
+
+/// Parse a &str to a u128.
+///
+/// Converts the string slice directly to Bytes and parses.
+///
+/// # Example
+///
+/// ```rust,ignore
+/// let n = str_to_u128(&env, "12345");
+/// // n is Some(12345)
+/// ```
+pub fn str_to_u128(env: &Env, s: &str) -> Option<u128> {
+    let bytes = Bytes::from_slice(env, s.as_bytes());
+    bytes_to_u128(&bytes)
+}
+
+/// Parse a &str to an i128.
+///
+/// Converts the string slice directly to Bytes and parses.
+/// Handles optional leading minus sign.
+///
+/// # Example
+///
+/// ```rust,ignore
+/// let n = str_to_i128(&env, "-12345");
+/// // n is Some(-12345)
+/// ```
+pub fn str_to_i128(env: &Env, s: &str) -> Option<i128> {
+    let bytes = Bytes::from_slice(env, s.as_bytes());
+    bytes_to_i128(&bytes)
+}
+
+/// Parse a &str to a U256.
+///
+/// Converts the string slice directly to Bytes and parses.
+/// More ergonomic than creating a soroban_sdk::String first.
+///
+/// # Example
+///
+/// ```rust,ignore
+/// let n = str_to_u256(&env, "12345");
+/// // n is Some(U256)
+/// ```
+pub fn str_to_u256(env: &Env, s: &str) -> Option<U256> {
+    let bytes = Bytes::from_slice(env, s.as_bytes());
+    bytes_to_u256(env, &bytes)
+}
+
+/// Parse a &str to an I256.
+///
+/// Converts the string slice directly to Bytes and parses.
+/// Handles optional leading minus sign.
+///
+/// # Example
+///
+/// ```rust,ignore
+/// let n = str_to_i256(&env, "-12345");
+/// // n is Some(I256)
+/// ```
+pub fn str_to_i256(env: &Env, s: &str) -> Option<I256> {
+    let bytes = Bytes::from_slice(env, s.as_bytes());
+    bytes_to_i256(env, &bytes)
+}
+
+// =============================================================================
+// JSON Escaping
+// =============================================================================
+
 /// Escape a String for safe inclusion in JSON.
 ///
 /// Escapes the following characters:
@@ -2915,5 +3049,83 @@ mod tests {
         assert!(n.is_some());
         let result = i256_to_bytes(&env, &n.unwrap());
         assert_eq!(result, Bytes::from_slice(&env, b"-12345"));
+    }
+
+    // ==========================================================================
+    // &str convenience wrapper tests
+    // ==========================================================================
+
+    #[test]
+    fn test_str_to_u32() {
+        let env = Env::default();
+        assert_eq!(str_to_u32(&env, "12345"), Some(12345));
+    }
+
+    #[test]
+    fn test_str_to_u32_invalid() {
+        let env = Env::default();
+        assert_eq!(str_to_u32(&env, "abc"), None);
+    }
+
+    #[test]
+    fn test_str_to_i32() {
+        let env = Env::default();
+        assert_eq!(str_to_i32(&env, "-12345"), Some(-12345));
+    }
+
+    #[test]
+    fn test_str_to_u64() {
+        let env = Env::default();
+        assert_eq!(str_to_u64(&env, "12345678901234"), Some(12345678901234));
+    }
+
+    #[test]
+    fn test_str_to_i64() {
+        let env = Env::default();
+        assert_eq!(str_to_i64(&env, "-12345678901234"), Some(-12345678901234));
+    }
+
+    #[test]
+    fn test_str_to_u128() {
+        let env = Env::default();
+        assert_eq!(str_to_u128(&env, "12345678901234567890"), Some(12345678901234567890));
+    }
+
+    #[test]
+    fn test_str_to_i128() {
+        let env = Env::default();
+        assert_eq!(str_to_i128(&env, "-12345678901234567890"), Some(-12345678901234567890));
+    }
+
+    #[test]
+    fn test_str_to_u256() {
+        let env = Env::default();
+        let n = str_to_u256(&env, "12345");
+        assert!(n.is_some());
+        let result = u256_to_bytes(&env, &n.unwrap());
+        assert_eq!(result, Bytes::from_slice(&env, b"12345"));
+    }
+
+    #[test]
+    fn test_str_to_i256() {
+        let env = Env::default();
+        let n = str_to_i256(&env, "-12345");
+        assert!(n.is_some());
+        let result = i256_to_bytes(&env, &n.unwrap());
+        assert_eq!(result, Bytes::from_slice(&env, b"-12345"));
+    }
+
+    #[test]
+    fn test_str_to_u256_large() {
+        let env = Env::default();
+        // Test with a larger number
+        let n = str_to_u256(&env, "115792089237316195423570985008687907853269984665640564039457584007913129639935");
+        assert!(n.is_some());
+    }
+
+    #[test]
+    fn test_str_to_u32_empty() {
+        let env = Env::default();
+        assert_eq!(str_to_u32(&env, ""), None);
     }
 }

@@ -470,6 +470,21 @@ Convenience wrappers for parsing `soroban_sdk::String`. Useful for form input.
 | `string_to_u256` | `(env: &Env, s: &String)` | `Option<U256>` |
 | `string_to_i256` | `(env: &Env, s: &String)` | `Option<I256>` |
 
+### &str → Number
+
+Convenience wrappers for parsing `&str` directly. Useful for string literals.
+
+| Function | Signature | Return |
+|----------|-----------|--------|
+| `str_to_u32` | `(env: &Env, s: &str)` | `Option<u32>` |
+| `str_to_i32` | `(env: &Env, s: &str)` | `Option<i32>` |
+| `str_to_u64` | `(env: &Env, s: &str)` | `Option<u64>` |
+| `str_to_i64` | `(env: &Env, s: &str)` | `Option<i64>` |
+| `str_to_u128` | `(env: &Env, s: &str)` | `Option<u128>` |
+| `str_to_i128` | `(env: &Env, s: &str)` | `Option<i128>` |
+| `str_to_u256` | `(env: &Env, s: &str)` | `Option<U256>` |
+| `str_to_i256` | `(env: &Env, s: &str)` | `Option<I256>` |
+
 ### Behavior Summary
 
 - Signed output: `-` prefix for negative values
