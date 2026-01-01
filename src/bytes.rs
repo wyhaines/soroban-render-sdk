@@ -3088,13 +3088,19 @@ mod tests {
     #[test]
     fn test_str_to_u128() {
         let env = Env::default();
-        assert_eq!(str_to_u128(&env, "12345678901234567890"), Some(12345678901234567890));
+        assert_eq!(
+            str_to_u128(&env, "12345678901234567890"),
+            Some(12345678901234567890)
+        );
     }
 
     #[test]
     fn test_str_to_i128() {
         let env = Env::default();
-        assert_eq!(str_to_i128(&env, "-12345678901234567890"), Some(-12345678901234567890));
+        assert_eq!(
+            str_to_i128(&env, "-12345678901234567890"),
+            Some(-12345678901234567890)
+        );
     }
 
     #[test]
@@ -3119,7 +3125,10 @@ mod tests {
     fn test_str_to_u256_large() {
         let env = Env::default();
         // Test with a larger number
-        let n = str_to_u256(&env, "115792089237316195423570985008687907853269984665640564039457584007913129639935");
+        let n = str_to_u256(
+            &env,
+            "115792089237316195423570985008687907853269984665640564039457584007913129639935",
+        );
         assert!(n.is_some());
     }
 
