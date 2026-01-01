@@ -223,14 +223,14 @@ pub fn u64_to_bytes(env: &Env, n: u64) -> Bytes {
 /// assert_eq!(bytes_to_u32(&bytes), Some(42));
 /// ```
 pub fn bytes_to_u32(bytes: &Bytes) -> Option<u32> {
-    if bytes.len() == 0 {
+    if bytes.is_empty() {
         return None;
     }
 
     let mut result: u32 = 0;
     for i in 0..bytes.len() {
         let b = bytes.get(i)?;
-        if b < b'0' || b > b'9' {
+        if !b.is_ascii_digit() {
             return None;
         }
         result = result.checked_mul(10)?;
@@ -251,7 +251,7 @@ pub fn bytes_to_u32(bytes: &Bytes) -> Option<u32> {
 /// assert_eq!(bytes_to_i32(&bytes), Some(-42));
 /// ```
 pub fn bytes_to_i32(bytes: &Bytes) -> Option<i32> {
-    if bytes.len() == 0 {
+    if bytes.is_empty() {
         return None;
     }
 
@@ -265,7 +265,7 @@ pub fn bytes_to_i32(bytes: &Bytes) -> Option<i32> {
     let mut result: i32 = 0;
     for i in start..bytes.len() {
         let b = bytes.get(i)?;
-        if b < b'0' || b > b'9' {
+        if !b.is_ascii_digit() {
             return None;
         }
         result = result.checked_mul(10)?;
@@ -291,14 +291,14 @@ pub fn bytes_to_i32(bytes: &Bytes) -> Option<i32> {
 /// assert_eq!(bytes_to_u64(&bytes), Some(42));
 /// ```
 pub fn bytes_to_u64(bytes: &Bytes) -> Option<u64> {
-    if bytes.len() == 0 {
+    if bytes.is_empty() {
         return None;
     }
 
     let mut result: u64 = 0;
     for i in 0..bytes.len() {
         let b = bytes.get(i)?;
-        if b < b'0' || b > b'9' {
+        if !b.is_ascii_digit() {
             return None;
         }
         result = result.checked_mul(10)?;
@@ -319,7 +319,7 @@ pub fn bytes_to_u64(bytes: &Bytes) -> Option<u64> {
 /// assert_eq!(bytes_to_i64(&bytes), Some(-42));
 /// ```
 pub fn bytes_to_i64(bytes: &Bytes) -> Option<i64> {
-    if bytes.len() == 0 {
+    if bytes.is_empty() {
         return None;
     }
 
@@ -333,7 +333,7 @@ pub fn bytes_to_i64(bytes: &Bytes) -> Option<i64> {
     let mut result: i64 = 0;
     for i in start..bytes.len() {
         let b = bytes.get(i)?;
-        if b < b'0' || b > b'9' {
+        if !b.is_ascii_digit() {
             return None;
         }
         result = result.checked_mul(10)?;
@@ -435,14 +435,14 @@ pub fn i128_to_bytes(env: &Env, n: i128) -> Bytes {
 /// assert_eq!(bytes_to_u128(&bytes), Some(42));
 /// ```
 pub fn bytes_to_u128(bytes: &Bytes) -> Option<u128> {
-    if bytes.len() == 0 {
+    if bytes.is_empty() {
         return None;
     }
 
     let mut result: u128 = 0;
     for i in 0..bytes.len() {
         let b = bytes.get(i)?;
-        if b < b'0' || b > b'9' {
+        if !b.is_ascii_digit() {
             return None;
         }
         result = result.checked_mul(10)?;
@@ -463,7 +463,7 @@ pub fn bytes_to_u128(bytes: &Bytes) -> Option<u128> {
 /// assert_eq!(bytes_to_i128(&bytes), Some(-42));
 /// ```
 pub fn bytes_to_i128(bytes: &Bytes) -> Option<i128> {
-    if bytes.len() == 0 {
+    if bytes.is_empty() {
         return None;
     }
 
@@ -478,7 +478,7 @@ pub fn bytes_to_i128(bytes: &Bytes) -> Option<i128> {
     let mut result: u128 = 0;
     for i in start..bytes.len() {
         let b = bytes.get(i)?;
-        if b < b'0' || b > b'9' {
+        if !b.is_ascii_digit() {
             return None;
         }
         result = result.checked_mul(10)?;
@@ -1085,8 +1085,8 @@ pub fn u256_to_bytes(env: &Env, n: &U256) -> Bytes {
     }
 
     let mut num = [0u8; 32];
-    for i in 0..32 {
-        num[i] = be_bytes.get(i as u32).unwrap_or(0);
+    for (i, item) in num.iter_mut().enumerate() {
+        *item = be_bytes.get(i as u32).unwrap_or(0);
     }
 
     // U256 max is ~78 decimal digits
@@ -1119,9 +1119,9 @@ fn is_zero_256(num: &[u8; 32]) -> bool {
 /// Helper: divide a 256-bit big-endian number by 10, returning remainder
 fn div_by_10_256(num: &mut [u8; 32]) -> u8 {
     let mut carry: u16 = 0;
-    for i in 0..32 {
-        let current = (carry << 8) | (num[i] as u16);
-        num[i] = (current / 10) as u8;
+    for item in num.iter_mut() {
+        let current = (carry << 8) | (*item as u16);
+        *item = (current / 10) as u8;
         carry = current % 10;
     }
     carry as u8
@@ -1147,8 +1147,8 @@ pub fn i256_to_bytes(env: &Env, n: &I256) -> Bytes {
     if is_negative {
         // Two's complement negation to get absolute value: invert all bits and add 1
         let mut abs_num = [0u8; 32];
-        for i in 0..32 {
-            abs_num[i] = !be_bytes.get(i as u32).unwrap_or(0);
+        for (i, item) in abs_num.iter_mut().enumerate() {
+            *item = !be_bytes.get(i as u32).unwrap_or(0);
         }
         let mut carry = 1u16;
         for i in (0..32).rev() {
@@ -1177,8 +1177,8 @@ pub fn i256_to_bytes(env: &Env, n: &I256) -> Bytes {
         result
     } else {
         let mut num = [0u8; 32];
-        for i in 0..32 {
-            num[i] = be_bytes.get(i as u32).unwrap_or(0);
+        for (i, item) in num.iter_mut().enumerate() {
+            *item = be_bytes.get(i as u32).unwrap_or(0);
         }
 
         if is_zero_256(&num) {
@@ -1267,8 +1267,8 @@ pub fn i256_to_hex(env: &Env, n: &I256) -> Bytes {
     if is_negative {
         // Two's complement negation to get absolute value
         let mut abs_num = [0u8; 32];
-        for i in 0..32 {
-            abs_num[i] = !be_bytes.get(i as u32).unwrap_or(0);
+        for (i, item) in abs_num.iter_mut().enumerate() {
+            *item = !be_bytes.get(i as u32).unwrap_or(0);
         }
         let mut carry = 1u16;
         for i in (0..32).rev() {
@@ -1356,7 +1356,7 @@ pub fn i256_to_hex(env: &Env, n: &I256) -> Bytes {
 /// let n = bytes_to_u256(&env, &bytes);
 /// ```
 pub fn bytes_to_u256(env: &Env, bytes: &Bytes) -> Option<U256> {
-    if bytes.len() == 0 {
+    if bytes.is_empty() {
         return None;
     }
 
@@ -1364,7 +1364,7 @@ pub fn bytes_to_u256(env: &Env, bytes: &Bytes) -> Option<U256> {
 
     for i in 0..bytes.len() {
         let b = bytes.get(i)?;
-        if b < b'0' || b > b'9' {
+        if !b.is_ascii_digit() {
             return None;
         }
         let digit = b - b'0';
@@ -1404,7 +1404,7 @@ fn mul_by_10_and_add_256(num: &mut [u8; 32], digit: u8) -> bool {
 /// let n = bytes_to_i256(&env, &bytes);
 /// ```
 pub fn bytes_to_i256(env: &Env, bytes: &Bytes) -> Option<I256> {
-    if bytes.len() == 0 {
+    if bytes.is_empty() {
         return None;
     }
 
@@ -1419,7 +1419,7 @@ pub fn bytes_to_i256(env: &Env, bytes: &Bytes) -> Option<I256> {
 
     for i in start..bytes.len() {
         let b = bytes.get(i)?;
-        if b < b'0' || b > b'9' {
+        if !b.is_ascii_digit() {
             return None;
         }
         let digit = b - b'0';
@@ -1439,8 +1439,8 @@ pub fn bytes_to_i256(env: &Env, bytes: &Bytes) -> Option<I256> {
         if (num[0] & 0x80) != 0 {
             let mut is_min = num[0] == 0x80;
             if is_min {
-                for i in 1..32 {
-                    if num[i] != 0 {
+                for item in num.iter().skip(1) {
+                    if *item != 0 {
                         is_min = false;
                         break;
                     }
@@ -1454,8 +1454,8 @@ pub fn bytes_to_i256(env: &Env, bytes: &Bytes) -> Option<I256> {
         }
 
         // Two's complement negation
-        for i in 0..32 {
-            num[i] = !num[i];
+        for item in num.iter_mut() {
+            *item = !*item;
         }
         let mut carry = 1u16;
         for i in (0..32).rev() {
@@ -1608,8 +1608,8 @@ pub fn hex_to_i256(env: &Env, bytes: &Bytes) -> Option<I256> {
         if (num[0] & 0x80) != 0 {
             let mut is_min = num[0] == 0x80;
             if is_min {
-                for i in 1..32 {
-                    if num[i] != 0 {
+                for item in num.iter().skip(1) {
+                    if *item != 0 {
                         is_min = false;
                         break;
                     }
@@ -1623,8 +1623,8 @@ pub fn hex_to_i256(env: &Env, bytes: &Bytes) -> Option<I256> {
         }
 
         // Two's complement negation
-        for i in 0..32 {
-            num[i] = !num[i];
+        for item in num.iter_mut() {
+            *item = !*item;
         }
         let mut carry = 1u16;
         for i in (0..32).rev() {
