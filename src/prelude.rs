@@ -8,8 +8,23 @@
 
 // Re-export bytes utilities
 pub use crate::bytes::{
-    concat_bytes, escape_json_bytes, escape_json_string, i64_to_bytes, string_to_bytes,
-    u32_to_bytes,
+    // Core utilities
+    concat_bytes, escape_json_bytes, escape_json_string, string_to_bytes,
+    // Number to decimal Bytes
+    i32_to_bytes, i64_to_bytes, i128_to_bytes, i256_to_bytes,
+    u32_to_bytes, u64_to_bytes, u128_to_bytes, u256_to_bytes,
+    // Number to hex Bytes
+    i32_to_hex, i64_to_hex, i128_to_hex, i256_to_hex,
+    u32_to_hex, u64_to_hex, u128_to_hex, u256_to_hex,
+    // Decimal Bytes to number
+    bytes_to_i32, bytes_to_i64, bytes_to_i128, bytes_to_i256,
+    bytes_to_u32, bytes_to_u64, bytes_to_u128, bytes_to_u256,
+    // Hex Bytes to number
+    hex_to_i32, hex_to_i64, hex_to_i128, hex_to_i256,
+    hex_to_u32, hex_to_u64, hex_to_u128, hex_to_u256,
+    // String convenience wrappers
+    string_to_i32, string_to_i64, string_to_i128, string_to_i256,
+    string_to_u32, string_to_u64, string_to_u128, string_to_u256,
 };
 
 // Re-export metadata macros
