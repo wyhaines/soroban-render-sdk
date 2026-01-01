@@ -386,16 +386,96 @@ pub trait ContractRegistry {
 |----------|-------|
 | `MAX_STRING_SIZE` | 16384 (16KB) |
 
+### Core Utilities
+
 | Function | Signature | Description |
 |----------|-----------|-------------|
 | `concat_bytes` | `(env: &Env, parts: &Vec<Bytes>) -> Bytes` | Join Bytes |
 | `string_to_bytes` | `(env: &Env, s: &String) -> Bytes` | Convert String |
-| `u32_to_bytes` | `(env: &Env, n: u32) -> Bytes` | Decimal string |
-| `i64_to_bytes` | `(env: &Env, n: i64) -> Bytes` | Decimal string |
-| `escape_json_string` | `(env: &Env, s: &String) -> Bytes` | JSON escape |
-| `escape_json_bytes` | `(env: &Env, input: &[u8]) -> Bytes` | JSON escape |
+| `escape_json_string` | `(env: &Env, s: &String) -> Bytes` | JSON escape String |
+| `escape_json_bytes` | `(env: &Env, input: &[u8]) -> Bytes` | JSON escape bytes |
 
 ESCAPE RULES: `"` → `\"`, `\` → `\\`, `\n` → `\n`, `\r` → `\r`, `\t` → `\t`
+
+### Number → Decimal Bytes
+
+| Function | Signature |
+|----------|-----------|
+| `u32_to_bytes` | `(env: &Env, n: u32) -> Bytes` |
+| `i32_to_bytes` | `(env: &Env, n: i32) -> Bytes` |
+| `u64_to_bytes` | `(env: &Env, n: u64) -> Bytes` |
+| `i64_to_bytes` | `(env: &Env, n: i64) -> Bytes` |
+| `u128_to_bytes` | `(env: &Env, n: u128) -> Bytes` |
+| `i128_to_bytes` | `(env: &Env, n: i128) -> Bytes` |
+| `u256_to_bytes` | `(env: &Env, n: &U256) -> Bytes` |
+| `i256_to_bytes` | `(env: &Env, n: &I256) -> Bytes` |
+
+### Number → Hex Bytes
+
+Output format: `0x...` (lowercase). Negative: `-0x...`
+
+| Function | Signature |
+|----------|-----------|
+| `u32_to_hex` | `(env: &Env, n: u32) -> Bytes` |
+| `i32_to_hex` | `(env: &Env, n: i32) -> Bytes` |
+| `u64_to_hex` | `(env: &Env, n: u64) -> Bytes` |
+| `i64_to_hex` | `(env: &Env, n: i64) -> Bytes` |
+| `u128_to_hex` | `(env: &Env, n: u128) -> Bytes` |
+| `i128_to_hex` | `(env: &Env, n: i128) -> Bytes` |
+| `u256_to_hex` | `(env: &Env, n: &U256) -> Bytes` |
+| `i256_to_hex` | `(env: &Env, n: &I256) -> Bytes` |
+
+### Decimal Bytes → Number
+
+Returns `None` on invalid input or overflow.
+
+| Function | Signature | Return |
+|----------|-----------|--------|
+| `bytes_to_u32` | `(bytes: &Bytes)` | `Option<u32>` |
+| `bytes_to_i32` | `(bytes: &Bytes)` | `Option<i32>` |
+| `bytes_to_u64` | `(bytes: &Bytes)` | `Option<u64>` |
+| `bytes_to_i64` | `(bytes: &Bytes)` | `Option<i64>` |
+| `bytes_to_u128` | `(bytes: &Bytes)` | `Option<u128>` |
+| `bytes_to_i128` | `(bytes: &Bytes)` | `Option<i128>` |
+| `bytes_to_u256` | `(env: &Env, bytes: &Bytes)` | `Option<U256>` |
+| `bytes_to_i256` | `(env: &Env, bytes: &Bytes)` | `Option<I256>` |
+
+### Hex Bytes → Number
+
+Accepts optional `0x`/`0X` prefix. Case-insensitive. Returns `None` on invalid input.
+
+| Function | Signature | Return |
+|----------|-----------|--------|
+| `hex_to_u32` | `(bytes: &Bytes)` | `Option<u32>` |
+| `hex_to_i32` | `(bytes: &Bytes)` | `Option<i32>` |
+| `hex_to_u64` | `(bytes: &Bytes)` | `Option<u64>` |
+| `hex_to_i64` | `(bytes: &Bytes)` | `Option<i64>` |
+| `hex_to_u128` | `(bytes: &Bytes)` | `Option<u128>` |
+| `hex_to_i128` | `(bytes: &Bytes)` | `Option<i128>` |
+| `hex_to_u256` | `(env: &Env, bytes: &Bytes)` | `Option<U256>` |
+| `hex_to_i256` | `(env: &Env, bytes: &Bytes)` | `Option<I256>` |
+
+### String → Number
+
+Convenience wrappers for parsing `soroban_sdk::String`. Useful for form input.
+
+| Function | Signature | Return |
+|----------|-----------|--------|
+| `string_to_u32` | `(env: &Env, s: &String)` | `Option<u32>` |
+| `string_to_i32` | `(env: &Env, s: &String)` | `Option<i32>` |
+| `string_to_u64` | `(env: &Env, s: &String)` | `Option<u64>` |
+| `string_to_i64` | `(env: &Env, s: &String)` | `Option<i64>` |
+| `string_to_u128` | `(env: &Env, s: &String)` | `Option<u128>` |
+| `string_to_i128` | `(env: &Env, s: &String)` | `Option<i128>` |
+| `string_to_u256` | `(env: &Env, s: &String)` | `Option<U256>` |
+| `string_to_i256` | `(env: &Env, s: &String)` | `Option<I256>` |
+
+### Behavior Summary
+
+- Signed output: `-` prefix for negative values
+- Hex output: `0x` prefix, lowercase digits
+- Parsing: `Option<T>` return, `None` on invalid input or overflow
+- U256/I256: require `env` parameter for SDK type construction
 
 ---
 

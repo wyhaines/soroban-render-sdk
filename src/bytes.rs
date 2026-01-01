@@ -2,7 +2,7 @@
 //!
 //! These functions provide common operations for working with `Bytes` in a `no_std` environment.
 
-use soroban_sdk::{Bytes, Env, String, Vec, I256, U256};
+use soroban_sdk::{Bytes, Env, I256, String, U256, Vec};
 
 /// Maximum supported string length for conversion.
 /// Strings longer than this cannot be fully converted due to Soroban SDK
@@ -2658,7 +2658,10 @@ mod tests {
         // Use from_u128 for a larger number
         let n = U256::from_u128(&env, 123456789012345678901234567890);
         let bytes = u256_to_bytes(&env, &n);
-        assert_eq!(bytes, Bytes::from_slice(&env, b"123456789012345678901234567890"));
+        assert_eq!(
+            bytes,
+            Bytes::from_slice(&env, b"123456789012345678901234567890")
+        );
     }
 
     // i256_to_bytes tests

@@ -358,7 +358,7 @@ builder.continue_page("posts", 2, 10, 47)  // page 2, 10 per page, 47 total
 
 ### Byte Utilities
 
-Low-level utilities for working with Bytes:
+The bytes module provides utilities for working with `Bytes` in Soroban contracts. This includes string conversion, JSON escaping, and comprehensive number-to-string conversion functions for all Rust integer types.
 
 ```rust
 use soroban_render_sdk::bytes::*;
@@ -366,14 +366,88 @@ use soroban_render_sdk::bytes::*;
 // Concatenate multiple Bytes
 let result = concat_bytes(&env, &parts);
 
-// Convert types to Bytes
+// Convert String to Bytes
 let bytes = string_to_bytes(&env, &my_string);
-let bytes = u32_to_bytes(&env, 42);
-let bytes = i64_to_bytes(&env, -100);
 
-// Escape for JSON
+// Escape for JSON output
 let escaped = escape_json_string(&env, &my_string);
 ```
+
+### Number Conversion
+
+The SDK provides bidirectional conversion between numeric types and their `Bytes` string representations. These functions support all standard Rust integer types plus Soroban's `U256` and `I256`.
+
+#### Converting Numbers to Decimal Strings
+
+Convert any numeric type to its decimal string representation as `Bytes`. Signed types automatically handle negative values.
+
+```rust
+let bytes = u64_to_bytes(&env, 12345);
+// bytes contains "12345"
+
+let bytes = i64_to_bytes(&env, -42);
+// bytes contains "-42"
+```
+
+The full set of decimal conversion functions covers `u32`, `i32`, `u64`, `i64`, `u128`, `i128`, `U256`, and `I256`.
+
+#### Converting Numbers to Hexadecimal
+
+Convert numeric types to lowercase hexadecimal with a `0x` prefix. Negative values use a `-0x` prefix.
+
+```rust
+let bytes = u64_to_hex(&env, 255);
+// bytes contains "0xff"
+
+let bytes = i32_to_hex(&env, -16);
+// bytes contains "-0x10"
+```
+
+#### Parsing Decimal Strings
+
+Parse a `Bytes` string back to a numeric type. These functions return `Option<T>` to handle invalid input safely.
+
+```rust
+let bytes = Bytes::from_slice(&env, b"12345");
+let value = bytes_to_u64(&bytes);
+// value is Some(12345)
+
+let invalid = Bytes::from_slice(&env, b"abc");
+let value = bytes_to_u64(&invalid);
+// value is None
+```
+
+Parsing uses checked arithmetic to detect overflow. Values that exceed the target type's range return `None`.
+
+#### Parsing Hexadecimal Strings
+
+Parse hexadecimal strings to numeric types. The `0x` prefix is optional and parsing is case-insensitive.
+
+```rust
+let bytes = Bytes::from_slice(&env, b"0xFF");
+let value = hex_to_u32(&bytes);
+// value is Some(255)
+
+let bytes = Bytes::from_slice(&env, b"ff");
+let value = hex_to_u32(&bytes);
+// value is Some(255)
+```
+
+#### String Convenience Functions
+
+When parsing form input, use the `string_to_*` functions that work directly with `soroban_sdk::String`.
+
+```rust
+let input = String::from_str(&env, "42");
+let value = string_to_u32(&env, &input);
+// value is Some(42)
+```
+
+#### Supported Types
+
+All conversion functions are available for: `u32`, `i32`, `u64`, `i64`, `u128`, `i128`, `U256`, `I256`.
+
+For the complete function reference, see [llms-full.md](llms-full.md#byte-utilities).
 
 ## Comparison
 

@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Number to decimal Bytes: `i32_to_bytes`, `u64_to_bytes`, `u128_to_bytes`, `i128_to_bytes`, `u256_to_bytes`, `i256_to_bytes`
+- Number to hex Bytes: `u32_to_hex`, `i32_to_hex`, `u64_to_hex`, `i64_to_hex`, `u128_to_hex`, `i128_to_hex`, `u256_to_hex`, `i256_to_hex`
+- Decimal parsing: `bytes_to_u32`, `bytes_to_i32`, `bytes_to_u64`, `bytes_to_i64`, `bytes_to_u128`, `bytes_to_i128`, `bytes_to_u256`, `bytes_to_i256`
+- Hex parsing: `hex_to_u32`, `hex_to_i32`, `hex_to_u64`, `hex_to_i64`, `hex_to_u128`, `hex_to_i128`, `hex_to_u256`, `hex_to_i256`
+- String parsing: `string_to_u32`, `string_to_i32`, `string_to_u64`, `string_to_i64`, `string_to_u128`, `string_to_i128`, `string_to_u256`, `string_to_i256`
+
 ## [0.1.0] - 2024-12-25
 
 ### Added
