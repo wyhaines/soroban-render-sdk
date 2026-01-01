@@ -550,6 +550,43 @@ impl<'a> MarkdownBuilder<'a> {
         self
     }
 
+    /// Add a select element for boolean values (true/false).
+    ///
+    /// Creates a dropdown with "Yes" (true) and "No" (false) options.
+    /// The current value determines which option is pre-selected.
+    pub fn select_bool(mut self, name: &str, current_value: bool) -> Self {
+        self.parts
+            .push_back(Bytes::from_slice(self.env, b"<select name=\""));
+        self.parts
+            .push_back(Bytes::from_slice(self.env, name.as_bytes()));
+        self.parts
+            .push_back(Bytes::from_slice(self.env, b"\">\n"));
+
+        if current_value {
+            self.parts.push_back(Bytes::from_slice(
+                self.env,
+                b"<option value=\"true\" selected>Yes</option>\n",
+            ));
+            self.parts.push_back(Bytes::from_slice(
+                self.env,
+                b"<option value=\"false\">No</option>\n",
+            ));
+        } else {
+            self.parts.push_back(Bytes::from_slice(
+                self.env,
+                b"<option value=\"true\">Yes</option>\n",
+            ));
+            self.parts.push_back(Bytes::from_slice(
+                self.env,
+                b"<option value=\"false\" selected>No</option>\n",
+            ));
+        }
+
+        self.parts
+            .push_back(Bytes::from_slice(self.env, b"</select>\n"));
+        self
+    }
+
     /// Add a redirect instruction for form submission.
     ///
     /// After successful transaction, the viewer will navigate to this path.
