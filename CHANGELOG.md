@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.1](https://github.com/wyhaines/soroban-render-sdk/compare/v0.1.0...v0.1.1) - 2026-01-01
+
+### Other
+
+- Cleanup formatting.
+- Add a function to facilitate simple boolean select creation.
+- Add another _with_value function to the SDK.
+- Added some SDK functions to better support markdown inputs, and to enable inputs with values pre-populated.
+- Only run release workflow if testing workflow succeeds.
+
 ## [0.1.0] - 2024-12-25
 
 ### Added
