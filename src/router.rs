@@ -40,6 +40,38 @@ pub fn path_to_bytes(env: &Env, path: &Option<String>) -> Bytes {
     }
 }
 
+/// Split a full path into (path_without_query, query_string).
+///
+/// For `/create?community=5`, returns (`/create`, Some(`community=5`)).
+/// For `/create`, returns (`/create`, None).
+pub fn split_path_and_query(env: &Env, full_path: &Bytes) -> (Bytes, Option<Bytes>) {
+    let mut path = Bytes::new(env);
+    let mut query = Bytes::new(env);
+    let mut in_query = false;
+
+    for i in 0..full_path.len() {
+        if let Some(b) = full_path.get(i) {
+            if b == b'?' && !in_query {
+                in_query = true;
+                continue; // Skip the '?' itself
+            }
+            if in_query {
+                query.push_back(b);
+            } else {
+                path.push_back(b);
+            }
+        }
+    }
+
+    // Default to "/" if path is empty
+    if path.is_empty() {
+        path = Bytes::from_slice(env, b"/");
+    }
+
+    let query_opt = if query.is_empty() { None } else { Some(query) };
+    (path, query_opt)
+}
+
 /// Check if a path exactly equals a route pattern.
 ///
 /// Only works for simple static routes without parameters.
@@ -129,10 +161,11 @@ pub fn parse_id(path: &Bytes, prefix: &[u8]) -> Option<u32> {
 
 /// A request context containing path information and the matched pattern.
 ///
-/// Used to extract path parameters within route handlers.
+/// Used to extract path parameters and query parameters within route handlers.
 pub struct Request<'a> {
     env: &'a Env,
     path: Bytes,
+    query: Option<Bytes>,
     handler_pattern: &'a [u8],
 }
 
@@ -142,13 +175,88 @@ impl<'a> Request<'a> {
         Self {
             env,
             path,
+            query: None,
             handler_pattern,
         }
     }
 
-    /// Get the full path.
+    /// Create a new request with query string.
+    pub fn with_query(env: &'a Env, path: Bytes, query: Option<Bytes>, handler_pattern: &'a [u8]) -> Self {
+        Self {
+            env,
+            path,
+            query,
+            handler_pattern,
+        }
+    }
+
+    /// Get the path (without query string).
     pub fn path(&self) -> &Bytes {
         &self.path
+    }
+
+    /// Get the raw query string (everything after `?`).
+    ///
+    /// For path `/create?community=5&foo=bar`, returns Some(`community=5&foo=bar`).
+    pub fn raw_query(&self) -> Option<&Bytes> {
+        self.query.as_ref()
+    }
+
+    /// Get a query parameter value by key.
+    ///
+    /// For path `/create?community=5&foo=bar`:
+    /// - `get_query_param(b"community")` returns Some(`5`)
+    /// - `get_query_param(b"foo")` returns Some(`bar`)
+    /// - `get_query_param(b"missing")` returns None
+    pub fn get_query_param(&self, key: &[u8]) -> Option<Bytes> {
+        let query = self.query.as_ref()?;
+
+        // Parse key=value pairs separated by &
+        let mut current_key = Bytes::new(self.env);
+        let mut current_value = Bytes::new(self.env);
+        let mut in_value = false;
+
+        for i in 0..query.len() {
+            if let Some(b) = query.get(i) {
+                if b == b'=' && !in_value {
+                    in_value = true;
+                } else if b == b'&' {
+                    // Check if current key matches
+                    if bytes_eq_slice(&current_key, key) {
+                        return Some(current_value);
+                    }
+                    // Reset for next pair
+                    current_key = Bytes::new(self.env);
+                    current_value = Bytes::new(self.env);
+                    in_value = false;
+                } else if in_value {
+                    current_value.push_back(b);
+                } else {
+                    current_key.push_back(b);
+                }
+            }
+        }
+
+        // Check final pair
+        if bytes_eq_slice(&current_key, key) {
+            return Some(current_value);
+        }
+
+        None
+    }
+
+    /// Get a query parameter as u32.
+    ///
+    /// For path `/create?community=5`, `get_query_param_u32(b"community")` returns Some(5).
+    pub fn get_query_param_u32(&self, key: &[u8]) -> Option<u32> {
+        let bytes = self.get_query_param(key)?;
+        parse_bytes_as_u32(&bytes)
+    }
+
+    /// Get a query parameter as u64.
+    pub fn get_query_param_u64(&self, key: &[u8]) -> Option<u64> {
+        let bytes = self.get_query_param(key)?;
+        parse_bytes_as_u64(&bytes)
     }
 
     /// Get a named path parameter value.
@@ -228,24 +336,39 @@ impl<'a> Request<'a> {
 /// A declarative router for path-based routing.
 ///
 /// Uses first-match-wins semantics. Supports static routes, named parameters,
-/// and wildcards.
+/// and wildcards. Query strings are automatically stripped for pattern matching
+/// but remain accessible via `Request::get_query_param()`.
 pub struct Router<'a> {
     env: &'a Env,
     path: Bytes,
+    query: Option<Bytes>,
 }
 
 impl<'a> Router<'a> {
     /// Create a new router from an optional path.
+    ///
+    /// Query strings (everything after `?`) are automatically stripped for
+    /// pattern matching. Use `Request::get_query_param()` to access them.
     pub fn new(env: &'a Env, path: Option<String>) -> Self {
+        let full_path = path_to_bytes(env, &path);
+        let (path_only, query) = split_path_and_query(env, &full_path);
         Self {
             env,
-            path: path_to_bytes(env, &path),
+            path: path_only,
+            query,
         }
     }
 
     /// Create a router from existing Bytes.
-    pub fn from_bytes(env: &'a Env, path: Bytes) -> Self {
-        Self { env, path }
+    ///
+    /// Query strings are automatically stripped for pattern matching.
+    pub fn from_bytes(env: &'a Env, full_path: Bytes) -> Self {
+        let (path_only, query) = split_path_and_query(env, &full_path);
+        Self {
+            env,
+            path: path_only,
+            query,
+        }
     }
 
     /// Handle a route pattern. Returns a RouterResult for chaining.
@@ -254,16 +377,18 @@ impl<'a> Router<'a> {
         F: FnOnce(Request) -> T,
     {
         if pattern_matches(self.env, &self.path, pattern) {
-            let req = Request::new(self.env, self.path.clone(), pattern);
+            let req = Request::with_query(self.env, self.path.clone(), self.query.clone(), pattern);
             RouterResult {
                 env: self.env,
                 path: self.path,
+                query: self.query,
                 result: Some(handler(req)),
             }
         } else {
             RouterResult {
                 env: self.env,
                 path: self.path,
+                query: self.query,
                 result: None,
             }
         }
@@ -274,6 +399,7 @@ impl<'a> Router<'a> {
 pub struct RouterResult<'a, T> {
     env: &'a Env,
     path: Bytes,
+    query: Option<Bytes>,
     result: Option<T>,
 }
 
@@ -288,10 +414,11 @@ impl<'a, T> RouterResult<'a, T> {
         }
 
         if pattern_matches(self.env, &self.path, pattern) {
-            let req = Request::new(self.env, self.path.clone(), pattern);
+            let req = Request::with_query(self.env, self.path.clone(), self.query.clone(), pattern);
             RouterResult {
                 env: self.env,
                 path: self.path,
+                query: self.query,
                 result: Some(handler(req)),
             }
         } else {
@@ -307,7 +434,7 @@ impl<'a, T> RouterResult<'a, T> {
         match self.result {
             Some(r) => r,
             None => {
-                let req = Request::new(self.env, self.path, b"");
+                let req = Request::with_query(self.env, self.path, self.query, b"");
                 handler(req)
             }
         }
@@ -451,6 +578,25 @@ fn parse_bytes_as_u32(bytes: &Bytes) -> Option<u32> {
         if let Some(b) = bytes.get(i) {
             if b.is_ascii_digit() {
                 result = result * 10 + (b - b'0') as u32;
+            } else {
+                return None;
+            }
+        }
+    }
+    Some(result)
+}
+
+/// Parse Bytes as a u64.
+fn parse_bytes_as_u64(bytes: &Bytes) -> Option<u64> {
+    if bytes.is_empty() {
+        return None;
+    }
+
+    let mut result: u64 = 0;
+    for i in 0..bytes.len() {
+        if let Some(b) = bytes.get(i) {
+            if b.is_ascii_digit() {
+                result = result * 10 + (b - b'0') as u64;
             } else {
                 return None;
             }
@@ -622,5 +768,211 @@ mod tests {
             .handle(b"/task/{id}", |req| req.get_var_u32(b"id").unwrap_or(0))
             .or_default(|_| 0u32);
         assert_eq!(result, 42);
+    }
+
+    // ========================================================================
+    // Query String Tests
+    // ========================================================================
+
+    #[test]
+    fn test_split_path_and_query_no_query() {
+        let env = Env::default();
+        let full = Bytes::from_slice(&env, b"/create");
+        let (path, query) = split_path_and_query(&env, &full);
+        assert_eq!(path.len(), 7);
+        assert!(query.is_none());
+    }
+
+    #[test]
+    fn test_split_path_and_query_with_query() {
+        let env = Env::default();
+        let full = Bytes::from_slice(&env, b"/create?community=5");
+        let (path, query) = split_path_and_query(&env, &full);
+        // Path should be "/create"
+        assert_eq!(path.len(), 7);
+        assert_eq!(path.get(0), Some(b'/'));
+        assert_eq!(path.get(6), Some(b'e'));
+        // Query should be "community=5"
+        assert!(query.is_some());
+        let q = query.unwrap();
+        assert_eq!(q.len(), 11);
+    }
+
+    #[test]
+    fn test_split_path_and_query_multiple_params() {
+        let env = Env::default();
+        let full = Bytes::from_slice(&env, b"/search?q=hello&page=2&sort=date");
+        let (path, query) = split_path_and_query(&env, &full);
+        assert_eq!(path.len(), 7); // "/search"
+        assert!(query.is_some());
+        let q = query.unwrap();
+        // "q=hello&page=2&sort=date" = 24 chars
+        assert_eq!(q.len(), 24);
+    }
+
+    #[test]
+    fn test_router_matches_with_query_string() {
+        let env = Env::default();
+        // This is the key test - /create?community=0 should match /create
+        let result = Router::new(&env, Some(String::from_str(&env, "/create?community=0")))
+            .handle(b"/create", |_| 42u32)
+            .or_default(|_| 0u32);
+        assert_eq!(result, 42);
+    }
+
+    #[test]
+    fn test_router_query_param_accessible() {
+        let env = Env::default();
+        let result = Router::new(&env, Some(String::from_str(&env, "/create?community=5")))
+            .handle(b"/create", |req| {
+                req.get_query_param_u32(b"community").unwrap_or(0)
+            })
+            .or_default(|_| 0u32);
+        assert_eq!(result, 5);
+    }
+
+    #[test]
+    fn test_router_query_param_u64() {
+        let env = Env::default();
+        let result = Router::new(&env, Some(String::from_str(&env, "/create?community=12345678901")))
+            .handle(b"/create", |req| {
+                req.get_query_param_u64(b"community").unwrap_or(0)
+            })
+            .or_default(|_| 0u64);
+        assert_eq!(result, 12345678901u64);
+    }
+
+    #[test]
+    fn test_router_multiple_query_params() {
+        let env = Env::default();
+        let result = Router::new(&env, Some(String::from_str(&env, "/search?q=hello&page=3&sort=date")))
+            .handle(b"/search", |req| {
+                let page = req.get_query_param_u32(b"page").unwrap_or(1);
+                let has_sort = req.get_query_param(b"sort").is_some();
+                if has_sort { page * 10 } else { page }
+            })
+            .or_default(|_| 0u32);
+        assert_eq!(result, 30); // page=3, has_sort=true, so 3*10=30
+    }
+
+    #[test]
+    fn test_router_query_param_missing() {
+        let env = Env::default();
+        let result = Router::new(&env, Some(String::from_str(&env, "/create?other=value")))
+            .handle(b"/create", |req| {
+                req.get_query_param_u32(b"community").unwrap_or(999)
+            })
+            .or_default(|_| 0u32);
+        assert_eq!(result, 999); // community param missing, use default
+    }
+
+    #[test]
+    fn test_router_raw_query() {
+        let env = Env::default();
+        let result = Router::new(&env, Some(String::from_str(&env, "/create?foo=bar&baz=qux")))
+            .handle(b"/create", |req| {
+                req.raw_query().map(|q| q.len()).unwrap_or(0)
+            })
+            .or_default(|_| 0u32);
+        assert_eq!(result, 15); // "foo=bar&baz=qux" = 15 chars
+    }
+
+    #[test]
+    fn test_router_path_with_param_and_query() {
+        let env = Env::default();
+        // Test path params work alongside query params
+        let result = Router::new(&env, Some(String::from_str(&env, "/task/42?status=done")))
+            .handle(b"/task/{id}", |req| {
+                let id = req.get_var_u32(b"id").unwrap_or(0);
+                let has_status = req.get_query_param(b"status").is_some();
+                if has_status { id + 100 } else { id }
+            })
+            .or_default(|_| 0u32);
+        assert_eq!(result, 142); // id=42, has_status=true, so 42+100=142
+    }
+
+    // ========================================================================
+    // Query String Edge Cases
+    // ========================================================================
+
+    #[test]
+    fn test_split_path_and_query_empty_query() {
+        let env = Env::default();
+        // Path with trailing ? but no query params
+        let full = Bytes::from_slice(&env, b"/create?");
+        let (path, query) = split_path_and_query(&env, &full);
+        assert_eq!(path.len(), 7); // "/create"
+        assert!(query.is_none()); // Empty query should be None
+    }
+
+    #[test]
+    fn test_query_param_empty_value() {
+        let env = Env::default();
+        // Query param with empty value: foo=
+        let result = Router::new(&env, Some(String::from_str(&env, "/test?foo=&bar=value")))
+            .handle(b"/test", |req| {
+                let foo = req.get_query_param(b"foo");
+                let bar = req.get_query_param(b"bar");
+                // foo should exist but be empty, bar should have value
+                let foo_empty = foo.map(|b| b.is_empty()).unwrap_or(false);
+                let bar_ok = bar.map(|b| b.len() == 5).unwrap_or(false);
+                if foo_empty && bar_ok { 1u32 } else { 0u32 }
+            })
+            .or_default(|_| 0u32);
+        assert_eq!(result, 1);
+    }
+
+    #[test]
+    fn test_query_param_no_equals() {
+        let env = Env::default();
+        // Query param without = sign (just key) - treated as key with empty value
+        let result = Router::new(&env, Some(String::from_str(&env, "/test?flag&value=123")))
+            .handle(b"/test", |req| {
+                // "flag" has no = sign, treated as existing with empty value
+                let flag = req.get_query_param(b"flag");
+                let value = req.get_query_param_u32(b"value");
+                // flag should exist but be empty, value should be 123
+                let flag_empty = flag.map(|b| b.is_empty()).unwrap_or(false);
+                if flag_empty && value == Some(123) { 1u32 } else { 0u32 }
+            })
+            .or_default(|_| 0u32);
+        assert_eq!(result, 1);
+    }
+
+    #[test]
+    fn test_query_first_param() {
+        let env = Env::default();
+        // Ensure first param is accessible
+        let result = Router::new(&env, Some(String::from_str(&env, "/test?first=1&second=2&third=3")))
+            .handle(b"/test", |req| {
+                req.get_query_param_u32(b"first").unwrap_or(0)
+            })
+            .or_default(|_| 0u32);
+        assert_eq!(result, 1);
+    }
+
+    #[test]
+    fn test_query_last_param() {
+        let env = Env::default();
+        // Ensure last param is accessible (no trailing &)
+        let result = Router::new(&env, Some(String::from_str(&env, "/test?first=1&second=2&third=3")))
+            .handle(b"/test", |req| {
+                req.get_query_param_u32(b"third").unwrap_or(0)
+            })
+            .or_default(|_| 0u32);
+        assert_eq!(result, 3);
+    }
+
+    #[test]
+    fn test_router_from_bytes_with_query() {
+        let env = Env::default();
+        // Test from_bytes also strips query params
+        let full_path = Bytes::from_slice(&env, b"/create?id=5");
+        let result = Router::from_bytes(&env, full_path)
+            .handle(b"/create", |req| {
+                req.get_query_param_u32(b"id").unwrap_or(0)
+            })
+            .or_default(|_| 0u32);
+        assert_eq!(result, 5);
     }
 }
