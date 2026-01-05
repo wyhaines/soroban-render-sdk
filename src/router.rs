@@ -181,7 +181,12 @@ impl<'a> Request<'a> {
     }
 
     /// Create a new request with query string.
-    pub fn with_query(env: &'a Env, path: Bytes, query: Option<Bytes>, handler_pattern: &'a [u8]) -> Self {
+    pub fn with_query(
+        env: &'a Env,
+        path: Bytes,
+        query: Option<Bytes>,
+        handler_pattern: &'a [u8],
+    ) -> Self {
         Self {
             env,
             path,
@@ -834,24 +839,30 @@ mod tests {
     #[test]
     fn test_router_query_param_u64() {
         let env = Env::default();
-        let result = Router::new(&env, Some(String::from_str(&env, "/create?community=12345678901")))
-            .handle(b"/create", |req| {
-                req.get_query_param_u64(b"community").unwrap_or(0)
-            })
-            .or_default(|_| 0u64);
+        let result = Router::new(
+            &env,
+            Some(String::from_str(&env, "/create?community=12345678901")),
+        )
+        .handle(b"/create", |req| {
+            req.get_query_param_u64(b"community").unwrap_or(0)
+        })
+        .or_default(|_| 0u64);
         assert_eq!(result, 12345678901u64);
     }
 
     #[test]
     fn test_router_multiple_query_params() {
         let env = Env::default();
-        let result = Router::new(&env, Some(String::from_str(&env, "/search?q=hello&page=3&sort=date")))
-            .handle(b"/search", |req| {
-                let page = req.get_query_param_u32(b"page").unwrap_or(1);
-                let has_sort = req.get_query_param(b"sort").is_some();
-                if has_sort { page * 10 } else { page }
-            })
-            .or_default(|_| 0u32);
+        let result = Router::new(
+            &env,
+            Some(String::from_str(&env, "/search?q=hello&page=3&sort=date")),
+        )
+        .handle(b"/search", |req| {
+            let page = req.get_query_param_u32(b"page").unwrap_or(1);
+            let has_sort = req.get_query_param(b"sort").is_some();
+            if has_sort { page * 10 } else { page }
+        })
+        .or_default(|_| 0u32);
         assert_eq!(result, 30); // page=3, has_sort=true, so 3*10=30
     }
 
@@ -869,11 +880,14 @@ mod tests {
     #[test]
     fn test_router_raw_query() {
         let env = Env::default();
-        let result = Router::new(&env, Some(String::from_str(&env, "/create?foo=bar&baz=qux")))
-            .handle(b"/create", |req| {
-                req.raw_query().map(|q| q.len()).unwrap_or(0)
-            })
-            .or_default(|_| 0u32);
+        let result = Router::new(
+            &env,
+            Some(String::from_str(&env, "/create?foo=bar&baz=qux")),
+        )
+        .handle(b"/create", |req| {
+            req.raw_query().map(|q| q.len()).unwrap_or(0)
+        })
+        .or_default(|_| 0u32);
         assert_eq!(result, 15); // "foo=bar&baz=qux" = 15 chars
     }
 
@@ -933,7 +947,11 @@ mod tests {
                 let value = req.get_query_param_u32(b"value");
                 // flag should exist but be empty, value should be 123
                 let flag_empty = flag.map(|b| b.is_empty()).unwrap_or(false);
-                if flag_empty && value == Some(123) { 1u32 } else { 0u32 }
+                if flag_empty && value == Some(123) {
+                    1u32
+                } else {
+                    0u32
+                }
             })
             .or_default(|_| 0u32);
         assert_eq!(result, 1);
@@ -943,11 +961,14 @@ mod tests {
     fn test_query_first_param() {
         let env = Env::default();
         // Ensure first param is accessible
-        let result = Router::new(&env, Some(String::from_str(&env, "/test?first=1&second=2&third=3")))
-            .handle(b"/test", |req| {
-                req.get_query_param_u32(b"first").unwrap_or(0)
-            })
-            .or_default(|_| 0u32);
+        let result = Router::new(
+            &env,
+            Some(String::from_str(&env, "/test?first=1&second=2&third=3")),
+        )
+        .handle(b"/test", |req| {
+            req.get_query_param_u32(b"first").unwrap_or(0)
+        })
+        .or_default(|_| 0u32);
         assert_eq!(result, 1);
     }
 
@@ -955,11 +976,14 @@ mod tests {
     fn test_query_last_param() {
         let env = Env::default();
         // Ensure last param is accessible (no trailing &)
-        let result = Router::new(&env, Some(String::from_str(&env, "/test?first=1&second=2&third=3")))
-            .handle(b"/test", |req| {
-                req.get_query_param_u32(b"third").unwrap_or(0)
-            })
-            .or_default(|_| 0u32);
+        let result = Router::new(
+            &env,
+            Some(String::from_str(&env, "/test?first=1&second=2&third=3")),
+        )
+        .handle(b"/test", |req| {
+            req.get_query_param_u32(b"third").unwrap_or(0)
+        })
+        .or_default(|_| 0u32);
         assert_eq!(result, 3);
     }
 
