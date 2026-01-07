@@ -789,6 +789,42 @@ impl<'a> MarkdownBuilder<'a> {
         self
     }
 
+    /// Add a markdown-aware textarea with a String value wrapped in noparse tags.
+    ///
+    /// Creates: `<textarea name="name" data-editor="markdown" rows="N" placeholder="p">{{noparse}}value{{/noparse}}</textarea>`
+    ///
+    /// The noparse wrapper prevents the viewer from resolving `{{include ...}}` tags
+    /// or other special syntax inside the value. Use this when editing content that
+    /// may contain include tags or other syntax that should be displayed as-is
+    /// rather than resolved.
+    pub fn textarea_markdown_with_value_noparse_string(
+        mut self,
+        name: &str,
+        rows: u8,
+        placeholder: &str,
+        value: &String,
+    ) -> Self {
+        self.parts
+            .push_back(Bytes::from_slice(self.env, b"<textarea name=\""));
+        self.parts
+            .push_back(Bytes::from_slice(self.env, name.as_bytes()));
+        self.parts.push_back(Bytes::from_slice(
+            self.env,
+            b"\" data-editor=\"markdown\" rows=\"",
+        ));
+        self.parts.push_back(u32_to_bytes(self.env, rows as u32));
+        self.parts
+            .push_back(Bytes::from_slice(self.env, b"\" placeholder=\""));
+        self.parts
+            .push_back(Bytes::from_slice(self.env, placeholder.as_bytes()));
+        self.parts
+            .push_back(Bytes::from_slice(self.env, b"\">{{noparse}}"));
+        self.parts.push_back(string_to_bytes(self.env, value));
+        self.parts
+            .push_back(Bytes::from_slice(self.env, b"{{/noparse}}</textarea>\n"));
+        self
+    }
+
     // ========================================================================
     // Lists
     // ========================================================================

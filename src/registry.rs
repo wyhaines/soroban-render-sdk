@@ -31,7 +31,7 @@
 //! }
 //! ```
 
-use soroban_sdk::{Address, Env, Map, Symbol, contracttype};
+use soroban_sdk::{Address, Bytes, Env, Map, Symbol, contracttype};
 
 /// Storage keys used by the base registry.
 ///
@@ -192,6 +192,60 @@ impl BaseRegistry {
         env.storage().instance().get(&RegistryKey::Admin)
     }
 
+    /// Emit `{{aliases ...}}` tag with all registered contract aliases.
+    ///
+    /// This generates a tag that soroban-render viewers parse to enable
+    /// friendly alias names in `{{include contract=alias ...}}` directives.
+    ///
+    /// # Arguments
+    ///
+    /// * `env` - The Soroban environment
+    ///
+    /// # Returns
+    ///
+    /// Bytes containing `{{aliases alias1=CONTRACT_ID alias2=CONTRACT_ID ...}}`
+    /// or empty Bytes if no contracts are registered.
+    ///
+    /// # Example
+    ///
+    /// ```rust,ignore
+    /// use soroban_render_sdk::registry::BaseRegistry;
+    ///
+    /// // In your render function:
+    /// let aliases_tag = BaseRegistry::emit_aliases(&env);
+    /// MarkdownBuilder::new(&env)
+    ///     .raw(aliases_tag)
+    ///     // ... rest of content
+    /// ```
+    pub fn emit_aliases(env: &Env) -> Bytes {
+        use crate::bytes::{address_to_bytes, symbol_to_bytes};
+
+        let contracts: Map<Symbol, Address> = env
+            .storage()
+            .instance()
+            .get(&RegistryKey::Contracts)
+            .unwrap_or(Map::new(env));
+
+        if contracts.is_empty() {
+            return Bytes::new(env);
+        }
+
+        let mut result = Bytes::from_slice(env, b"{{aliases ");
+
+        // Iterate over all registered contracts
+        for key in contracts.keys() {
+            if let Some(addr) = contracts.get(key.clone()) {
+                result.append(&symbol_to_bytes(env, &key));
+                result.append(&Bytes::from_slice(env, b"="));
+                result.append(&address_to_bytes(env, &addr));
+                result.append(&Bytes::from_slice(env, b" "));
+            }
+        }
+
+        result.append(&Bytes::from_slice(env, b"}}"));
+        result
+    }
+
     /// Remove a contract alias.
     ///
     /// Only the admin can call this function.
@@ -257,6 +311,10 @@ mod tests {
 
         pub fn unregister(env: Env, alias: Symbol) {
             BaseRegistry::unregister(&env, alias);
+        }
+
+        pub fn emit_aliases(env: Env) -> Bytes {
+            BaseRegistry::emit_aliases(&env)
         }
     }
 
@@ -391,5 +449,58 @@ mod tests {
 
         client.init(&admin, &contracts);
         client.init(&admin, &contracts); // Should panic
+    }
+
+    #[test]
+    fn test_emit_aliases() {
+        let env = Env::default();
+        env.mock_all_auths();
+
+        let contract_id = env.register(TestRegistry, ());
+        let client = TestRegistryClient::new(&env, &contract_id);
+
+        let admin = Address::generate(&env);
+        let theme = Address::generate(&env);
+        let content = Address::generate(&env);
+
+        let mut contracts = Map::new(&env);
+        contracts.set(symbol_short!("theme"), theme.clone());
+        contracts.set(symbol_short!("content"), content.clone());
+
+        client.init(&admin, &contracts);
+
+        // Test emit_aliases produces valid output
+        let aliases = client.emit_aliases();
+
+        // Check it starts with "{{aliases "
+        let prefix = Bytes::from_slice(&env, b"{{aliases ");
+        assert_eq!(aliases.slice(0..prefix.len()), prefix);
+
+        // Check it ends with "}}"
+        let suffix = Bytes::from_slice(&env, b"}}");
+        let suffix_start = aliases.len() - suffix.len();
+        assert_eq!(aliases.slice(suffix_start..aliases.len()), suffix);
+
+        // Check length is reasonable (should contain at least prefix + 2 aliases + suffix)
+        // prefix (10) + "theme=" (6) + contract_id (56) + " " (1) = 73 min per alias
+        assert!(aliases.len() > prefix.len() + suffix.len());
+    }
+
+    #[test]
+    fn test_emit_aliases_empty() {
+        let env = Env::default();
+        env.mock_all_auths();
+
+        let contract_id = env.register(TestRegistry, ());
+        let client = TestRegistryClient::new(&env, &contract_id);
+
+        let admin = Address::generate(&env);
+        let contracts: Map<Symbol, Address> = Map::new(&env);
+
+        client.init(&admin, &contracts);
+
+        // Test emit_aliases with no contracts returns empty
+        let aliases = client.emit_aliases();
+        assert_eq!(aliases.len(), 0);
     }
 }

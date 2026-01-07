@@ -2,7 +2,7 @@
 //!
 //! These functions provide common operations for working with `Bytes` in a `no_std` environment.
 
-use soroban_sdk::{Bytes, Env, I256, String, U256, Vec};
+use soroban_sdk::{Address, Bytes, Env, I256, String, Symbol, U256, Vec};
 
 /// Maximum supported string length for conversion.
 /// Strings longer than this cannot be fully converted due to Soroban SDK
@@ -77,6 +77,107 @@ pub fn string_to_bytes(env: &Env, s: &String) -> Bytes {
     // String exceeds maximum supported size.
     // We cannot truncate because copy_into_slice requires a buffer >= string length.
     Bytes::from_slice(env, b"[content exceeds 16KB limit]")
+}
+
+/// Convert an Address to its contract ID string as Bytes.
+///
+/// Stellar contract addresses are 56 characters in C... format.
+///
+/// # Example
+///
+/// ```rust,ignore
+/// let addr = env.current_contract_address();
+/// let id_bytes = address_to_bytes(&env, &addr);
+/// // id_bytes contains "CABC...XYZ" as Bytes
+/// ```
+pub fn address_to_bytes(env: &Env, addr: &Address) -> Bytes {
+    let addr_str = addr.to_string();
+    let len = addr_str.len() as usize;
+    let mut buf = [0u8; 56]; // Contract IDs are 56 chars
+    let copy_len = core::cmp::min(len, 56);
+    addr_str.copy_into_slice(&mut buf[..copy_len]);
+    Bytes::from_slice(env, &buf[..copy_len])
+}
+
+/// Convert a Symbol to its string representation as Bytes.
+///
+/// Symbols can contain up to 32 characters using a limited character set
+/// (alphanumeric and underscore). This function decodes short symbols
+/// (≤9 characters) which are encoded directly in the Val representation.
+///
+/// # Example
+///
+/// ```rust,ignore
+/// use soroban_sdk::symbol_short;
+/// let sym = symbol_short!("theme");
+/// let bytes = symbol_to_bytes(&env, &sym);
+/// // bytes contains "theme" as Bytes
+/// ```
+///
+/// # Note
+///
+/// This function only works with short symbols (≤9 characters).
+/// Long symbols will return empty Bytes.
+pub fn symbol_to_bytes(env: &Env, sym: &Symbol) -> Bytes {
+    // Short symbols (≤9 chars) are encoded in the Val using 6 bits per character.
+    // The encoding uses a character set of 64 values:
+    // '_' (0), '0'-'9' (1-10), 'A'-'Z' (11-36), 'a'-'z' (37-62)
+    //
+    // The raw Val for a small symbol has:
+    // - Tag in lower 8 bits (14 for small symbol)
+    // - Body in upper 56 bits: up to 9 chars × 6 bits = 54 bits, plus length
+
+    let val: soroban_sdk::Val = sym.to_val();
+    let raw = val.get_payload();
+
+    // Check if it's a small symbol (tag = 14)
+    let tag = raw & 0xFF;
+    if tag != 14 {
+        // Not a small symbol (likely an object symbol)
+        return Bytes::new(env);
+    }
+
+    // Extract the body (upper 56 bits)
+    let body = raw >> 8;
+
+    // Decode characters from the body
+    // Characters are stored from MSB to LSB
+    let mut result = [0u8; 9];
+    let mut len = 0usize;
+
+    // Find the actual length by checking where the characters end
+    // We need to decode from the most significant bits
+    for i in 0..9 {
+        let shift = 6 * (8 - i);
+        let code = (body >> shift) & 0x3F;
+        if code == 0 && i > 0 {
+            // Check if all remaining bits are 0
+            let mask = (1u64 << shift) - 1;
+            if (body & mask) == 0 {
+                break;
+            }
+        }
+        let ch = decode_symbol_char(code as u8);
+        if ch == 0 {
+            break;
+        }
+        result[i] = ch;
+        len = i + 1;
+    }
+
+    Bytes::from_slice(env, &result[..len])
+}
+
+/// Decode a 6-bit code to its character representation
+fn decode_symbol_char(code: u8) -> u8 {
+    match code {
+        0 => 0,  // null/end marker
+        1 => b'_',
+        2..=11 => b'0' + (code - 2),   // '0'-'9'
+        12..=37 => b'A' + (code - 12), // 'A'-'Z'
+        38..=63 => b'a' + (code - 38), // 'a'-'z'
+        _ => 0,
+    }
 }
 
 /// Convert a u32 to its decimal Bytes representation.

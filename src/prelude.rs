@@ -8,6 +8,9 @@
 
 // Re-export bytes utilities
 pub use crate::bytes::{
+    // Address and Symbol utilities
+    address_to_bytes,
+    symbol_to_bytes,
     // Decimal Bytes to number
     bytes_to_i32,
     bytes_to_i64,

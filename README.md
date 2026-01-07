@@ -258,6 +258,43 @@ impl MyRegistry {
 }
 ```
 
+#### Emitting Aliases
+
+The SDK provides `emit_aliases()` to generate `{{aliases ...}}` tags that enable include resolution with friendly names:
+
+```rust
+use soroban_render_sdk::registry::BaseRegistry;
+
+// In your render function:
+let aliases = BaseRegistry::emit_aliases(&env);
+MarkdownBuilder::new(&env)
+    .raw(aliases)  // {{aliases theme=CXYZ... content=CABC... }}
+    .h1("My Page")
+    // ...
+```
+
+For cross-contract calls, expose a public function:
+
+```rust
+pub fn render_aliases(env: Env) -> Bytes {
+    BaseRegistry::emit_aliases(&env)
+}
+```
+
+Other contracts can then fetch and emit aliases in their render output:
+
+```rust
+fn fetch_aliases(env: &Env) -> Bytes {
+    let registry: Address = /* get registry address */;
+    let args: Vec<Val> = Vec::new(env);
+    env.try_invoke_contract::<Bytes, soroban_sdk::Error>(
+        &registry,
+        &Symbol::new(env, "render_aliases"),
+        args,
+    ).ok().and_then(|r| r.ok()).unwrap_or(Bytes::new(env))
+}
+```
+
 #### Using Registry Aliases in Links
 
 Once you have a registry, use `form_link_to` and `tx_link_to` to target specific contracts:

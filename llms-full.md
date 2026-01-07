@@ -351,6 +351,29 @@ Contract address alias management for multi-contract applications.
 | `get_by_alias` | `(env: &Env, alias: Symbol) -> Option<Address>` | none |
 | `get_all` | `(env: &Env) -> Map<Symbol, Address>` | none |
 | `get_admin` | `(env: &Env) -> Option<Address>` | none |
+| `emit_aliases` | `(env: &Env) -> Bytes` | none |
+
+### emit_aliases
+
+Generate `{{aliases ...}}` tag from all registered contracts for include resolution.
+
+```rust
+// In render function:
+let aliases = BaseRegistry::emit_aliases(&env);
+MarkdownBuilder::new(&env)
+    .raw(aliases)  // {{aliases theme=CXYZ... content=CABC...}}
+    // ...
+```
+
+OUTPUT: `{{aliases alias1=CONTRACT_ID alias2=CONTRACT_ID ...}}`
+
+For cross-contract use, expose as public function:
+
+```rust
+pub fn render_aliases(env: Env) -> Bytes {
+    BaseRegistry::emit_aliases(&env)
+}
+```
 
 ### Usage Pattern
 
@@ -394,8 +417,24 @@ pub trait ContractRegistry {
 | `string_to_bytes` | `(env: &Env, s: &String) -> Bytes` | Convert String |
 | `escape_json_string` | `(env: &Env, s: &String) -> Bytes` | JSON escape String |
 | `escape_json_bytes` | `(env: &Env, input: &[u8]) -> Bytes` | JSON escape bytes |
+| `address_to_bytes` | `(env: &Env, addr: &Address) -> Bytes` | Convert Address to contract ID string |
+| `symbol_to_bytes` | `(env: &Env, sym: &Symbol) -> Bytes` | Convert Symbol to string |
 
 ESCAPE RULES: `"` → `\"`, `\` → `\\`, `\n` → `\n`, `\r` → `\r`, `\t` → `\t`
+
+### Type Conversion
+
+```rust
+// Address to 56-character contract ID string
+let addr = env.current_contract_address();
+let id_bytes = address_to_bytes(&env, &addr);
+// id_bytes contains "CABC...XYZ" as Bytes
+
+// Symbol to string (short symbols only, ≤9 chars)
+let sym = symbol_short!("theme");
+let sym_bytes = symbol_to_bytes(&env, &sym);
+// sym_bytes contains "theme" as Bytes
+```
 
 ### Number → Decimal Bytes
 
