@@ -171,7 +171,7 @@ pub fn symbol_to_bytes(env: &Env, sym: &Symbol) -> Bytes {
 /// Decode a 6-bit code to its character representation
 fn decode_symbol_char(code: u8) -> u8 {
     match code {
-        0 => 0,  // null/end marker
+        0 => 0, // null/end marker
         1 => b'_',
         2..=11 => b'0' + (code - 2),   // '0'-'9'
         12..=37 => b'A' + (code - 12), // 'A'-'Z'

@@ -10,7 +10,6 @@
 pub use crate::bytes::{
     // Address and Symbol utilities
     address_to_bytes,
-    symbol_to_bytes,
     // Decimal Bytes to number
     bytes_to_i32,
     bytes_to_i64,
@@ -62,6 +61,7 @@ pub use crate::bytes::{
     string_to_u64,
     string_to_u128,
     string_to_u256,
+    symbol_to_bytes,
     u32_to_bytes,
     u32_to_hex,
     u64_to_bytes,
