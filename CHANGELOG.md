@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.4](https://github.com/wyhaines/soroban-render-sdk/compare/v0.1.3...v0.1.4) - 2026-01-07
+
+### Other
+
+- Clippy so grumpy. Fixed.
+- Ah, format, I always forget ye.
+- Add direct registry support for creating a list of contracts and aliases. This can be used to inform components in other contracts, or external UI elements.
+
 ## [0.1.3](https://github.com/wyhaines/soroban-render-sdk/compare/v0.1.2...v0.1.3) - 2026-01-05
 
 ### Other
