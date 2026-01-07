@@ -147,7 +147,7 @@ pub fn symbol_to_bytes(env: &Env, sym: &Symbol) -> Bytes {
 
     // Find the actual length by checking where the characters end
     // We need to decode from the most significant bits
-    for i in 0..9 {
+    for (i, byte) in result.iter_mut().enumerate() {
         let shift = 6 * (8 - i);
         let code = (body >> shift) & 0x3F;
         if code == 0 && i > 0 {
@@ -161,7 +161,7 @@ pub fn symbol_to_bytes(env: &Env, sym: &Symbol) -> Bytes {
         if ch == 0 {
             break;
         }
-        result[i] = ch;
+        *byte = ch;
         len = i + 1;
     }
 
