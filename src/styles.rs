@@ -38,6 +38,36 @@ impl<'a> StyleBuilder<'a> {
     }
 
     // ========================================================================
+    // Private Helpers
+    // ========================================================================
+
+    /// Push a byte slice to parts.
+    fn push(&mut self, bytes: &[u8]) {
+        self.parts.push_back(Bytes::from_slice(self.env, bytes));
+    }
+
+    /// Push a string to parts.
+    fn push_str(&mut self, s: &str) {
+        self.parts
+            .push_back(Bytes::from_slice(self.env, s.as_bytes()));
+    }
+
+    /// Add an indented property line: `  prefix{name}: value;\n`
+    fn indented_property(&mut self, prefix: &[u8], name: &str, value: &str) {
+        self.push(b"  ");
+        self.push(prefix);
+        self.push_str(name);
+        self.push(b": ");
+        self.push_str(value);
+        self.push(b";\n");
+    }
+
+    /// Close a block with `}\n`.
+    fn close_block(&mut self) {
+        self.push(b"}\n");
+    }
+
+    // ========================================================================
     // CSS Variables (Custom Properties)
     // ========================================================================
 
@@ -52,14 +82,11 @@ impl<'a> StyleBuilder<'a> {
     /// // Output: :root { --primary: #0066cc; }
     /// ```
     pub fn root_var(mut self, name: &str, value: &str) -> Self {
-        self.parts
-            .push_back(Bytes::from_slice(self.env, b":root { --"));
-        self.parts
-            .push_back(Bytes::from_slice(self.env, name.as_bytes()));
-        self.parts.push_back(Bytes::from_slice(self.env, b": "));
-        self.parts
-            .push_back(Bytes::from_slice(self.env, value.as_bytes()));
-        self.parts.push_back(Bytes::from_slice(self.env, b"; }\n"));
+        self.push(b":root { --");
+        self.push_str(name);
+        self.push(b": ");
+        self.push_str(value);
+        self.push(b"; }\n");
         self
     }
 
@@ -69,8 +96,7 @@ impl<'a> StyleBuilder<'a> {
     ///
     /// Use with `.var()` and `.root_vars_end()`.
     pub fn root_vars_start(mut self) -> Self {
-        self.parts
-            .push_back(Bytes::from_slice(self.env, b":root {\n"));
+        self.push(b":root {\n");
         self
     }
 
@@ -80,13 +106,7 @@ impl<'a> StyleBuilder<'a> {
     ///
     /// Must be used between `.root_vars_start()` and `.root_vars_end()`.
     pub fn var(mut self, name: &str, value: &str) -> Self {
-        self.parts.push_back(Bytes::from_slice(self.env, b"  --"));
-        self.parts
-            .push_back(Bytes::from_slice(self.env, name.as_bytes()));
-        self.parts.push_back(Bytes::from_slice(self.env, b": "));
-        self.parts
-            .push_back(Bytes::from_slice(self.env, value.as_bytes()));
-        self.parts.push_back(Bytes::from_slice(self.env, b";\n"));
+        self.indented_property(b"--", name, value);
         self
     }
 
@@ -94,7 +114,7 @@ impl<'a> StyleBuilder<'a> {
     ///
     /// Creates: `}`
     pub fn root_vars_end(mut self) -> Self {
-        self.parts.push_back(Bytes::from_slice(self.env, b"}\n"));
+        self.close_block();
         self
     }
 
@@ -113,12 +133,10 @@ impl<'a> StyleBuilder<'a> {
     /// // Output: h1 { color: blue; font-size: 2rem; }
     /// ```
     pub fn rule(mut self, selector: &str, properties: &str) -> Self {
-        self.parts
-            .push_back(Bytes::from_slice(self.env, selector.as_bytes()));
-        self.parts.push_back(Bytes::from_slice(self.env, b" { "));
-        self.parts
-            .push_back(Bytes::from_slice(self.env, properties.as_bytes()));
-        self.parts.push_back(Bytes::from_slice(self.env, b" }\n"));
+        self.push_str(selector);
+        self.push(b" { ");
+        self.push_str(properties);
+        self.push(b" }\n");
         self
     }
 
@@ -128,9 +146,8 @@ impl<'a> StyleBuilder<'a> {
     ///
     /// Use with `.prop()` and `.rule_end()`.
     pub fn rule_start(mut self, selector: &str) -> Self {
-        self.parts
-            .push_back(Bytes::from_slice(self.env, selector.as_bytes()));
-        self.parts.push_back(Bytes::from_slice(self.env, b" {\n"));
+        self.push_str(selector);
+        self.push(b" {\n");
         self
     }
 
@@ -140,13 +157,7 @@ impl<'a> StyleBuilder<'a> {
     ///
     /// Must be used between `.rule_start()` and `.rule_end()`.
     pub fn prop(mut self, property: &str, value: &str) -> Self {
-        self.parts.push_back(Bytes::from_slice(self.env, b"  "));
-        self.parts
-            .push_back(Bytes::from_slice(self.env, property.as_bytes()));
-        self.parts.push_back(Bytes::from_slice(self.env, b": "));
-        self.parts
-            .push_back(Bytes::from_slice(self.env, value.as_bytes()));
-        self.parts.push_back(Bytes::from_slice(self.env, b";\n"));
+        self.indented_property(b"", property, value);
         self
     }
 
@@ -154,7 +165,7 @@ impl<'a> StyleBuilder<'a> {
     ///
     /// Creates: `}`
     pub fn rule_end(mut self) -> Self {
-        self.parts.push_back(Bytes::from_slice(self.env, b"}\n"));
+        self.close_block();
         self
     }
 
@@ -176,11 +187,9 @@ impl<'a> StyleBuilder<'a> {
     /// .media_end()
     /// ```
     pub fn media_start(mut self, condition: &str) -> Self {
-        self.parts
-            .push_back(Bytes::from_slice(self.env, b"@media "));
-        self.parts
-            .push_back(Bytes::from_slice(self.env, condition.as_bytes()));
-        self.parts.push_back(Bytes::from_slice(self.env, b" {\n"));
+        self.push(b"@media ");
+        self.push_str(condition);
+        self.push(b" {\n");
         self
     }
 
@@ -188,7 +197,7 @@ impl<'a> StyleBuilder<'a> {
     ///
     /// Creates: `}`
     pub fn media_end(mut self) -> Self {
-        self.parts.push_back(Bytes::from_slice(self.env, b"}\n"));
+        self.close_block();
         self
     }
 
@@ -212,12 +221,10 @@ impl<'a> StyleBuilder<'a> {
     ///
     /// Creates: `@media (min-width: Npx) {`
     pub fn breakpoint_min(mut self, min_width: u32) -> Self {
-        self.parts
-            .push_back(Bytes::from_slice(self.env, b"@media (min-width: "));
+        self.push(b"@media (min-width: ");
         self.parts
             .push_back(crate::bytes::u32_to_bytes(self.env, min_width));
-        self.parts
-            .push_back(Bytes::from_slice(self.env, b"px) {\n"));
+        self.push(b"px) {\n");
         self
     }
 
@@ -225,12 +232,10 @@ impl<'a> StyleBuilder<'a> {
     ///
     /// Creates: `@media (max-width: Npx) {`
     pub fn breakpoint_max(mut self, max_width: u32) -> Self {
-        self.parts
-            .push_back(Bytes::from_slice(self.env, b"@media (max-width: "));
+        self.push(b"@media (max-width: ");
         self.parts
             .push_back(crate::bytes::u32_to_bytes(self.env, max_width));
-        self.parts
-            .push_back(Bytes::from_slice(self.env, b"px) {\n"));
+        self.push(b"px) {\n");
         self
     }
 
@@ -242,8 +247,7 @@ impl<'a> StyleBuilder<'a> {
     ///
     /// Useful for complex selectors or CSS that doesn't fit the builder pattern.
     pub fn raw(mut self, css: &str) -> Self {
-        self.parts
-            .push_back(Bytes::from_slice(self.env, css.as_bytes()));
+        self.push_str(css);
         self
     }
 
@@ -251,16 +255,15 @@ impl<'a> StyleBuilder<'a> {
     ///
     /// Creates: `/* text */`
     pub fn comment(mut self, text: &str) -> Self {
-        self.parts.push_back(Bytes::from_slice(self.env, b"/* "));
-        self.parts
-            .push_back(Bytes::from_slice(self.env, text.as_bytes()));
-        self.parts.push_back(Bytes::from_slice(self.env, b" */\n"));
+        self.push(b"/* ");
+        self.push_str(text);
+        self.push(b" */\n");
         self
     }
 
     /// Add a newline for formatting.
     pub fn newline(mut self) -> Self {
-        self.parts.push_back(Bytes::from_slice(self.env, b"\n"));
+        self.push(b"\n");
         self
     }
 

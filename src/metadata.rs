@@ -63,11 +63,67 @@ macro_rules! render_formats {
     (json) => {
         soroban_sdk::contractmeta!(key = "render_formats", val = "json");
     };
+    // Both orderings produce the same normalized output
     (markdown, json) => {
         soroban_sdk::contractmeta!(key = "render_formats", val = "markdown,json");
     };
     (json, markdown) => {
         soroban_sdk::contractmeta!(key = "render_formats", val = "markdown,json");
+    };
+}
+
+/// Internal helper macro that emits metadata after arguments are parsed.
+/// Not intended for direct use.
+#[doc(hidden)]
+#[macro_export]
+macro_rules! __soroban_render_emit {
+    // Single format without options
+    (@format $fmt:ident) => {
+        $crate::render_v1!();
+        $crate::render_formats!($fmt);
+    };
+    // Single format with styles only
+    (@format $fmt:ident @styles) => {
+        $crate::render_v1!();
+        $crate::render_formats!($fmt);
+        $crate::render_has_styles!();
+    };
+    // Single format with theme only
+    (@format $fmt:ident @theme $theme:expr) => {
+        $crate::render_v1!();
+        $crate::render_formats!($fmt);
+        $crate::render_theme!($theme);
+    };
+    // Single format with both styles and theme
+    (@format $fmt:ident @styles @theme $theme:expr) => {
+        $crate::render_v1!();
+        $crate::render_formats!($fmt);
+        $crate::render_has_styles!();
+        $crate::render_theme!($theme);
+    };
+    // Dual format without options
+    (@formats $fmt1:ident $fmt2:ident) => {
+        $crate::render_v1!();
+        $crate::render_formats!($fmt1, $fmt2);
+    };
+    // Dual format with styles only
+    (@formats $fmt1:ident $fmt2:ident @styles) => {
+        $crate::render_v1!();
+        $crate::render_formats!($fmt1, $fmt2);
+        $crate::render_has_styles!();
+    };
+    // Dual format with theme only
+    (@formats $fmt1:ident $fmt2:ident @theme $theme:expr) => {
+        $crate::render_v1!();
+        $crate::render_formats!($fmt1, $fmt2);
+        $crate::render_theme!($theme);
+    };
+    // Dual format with both styles and theme
+    (@formats $fmt1:ident $fmt2:ident @styles @theme $theme:expr) => {
+        $crate::render_v1!();
+        $crate::render_formats!($fmt1, $fmt2);
+        $crate::render_has_styles!();
+        $crate::render_theme!($theme);
     };
 }
 
@@ -91,92 +147,32 @@ macro_rules! render_formats {
 /// ```
 #[macro_export]
 macro_rules! soroban_render {
-    (markdown) => {
-        $crate::render_v1!();
-        $crate::render_formats!(markdown);
+    // Single format patterns
+    ($fmt:ident) => {
+        $crate::__soroban_render_emit!(@format $fmt);
     };
-    (json) => {
-        $crate::render_v1!();
-        $crate::render_formats!(json);
+    ($fmt:ident, styles) => {
+        $crate::__soroban_render_emit!(@format $fmt @styles);
     };
-    (markdown, json) => {
-        $crate::render_v1!();
-        $crate::render_formats!(markdown, json);
+    ($fmt:ident, theme = $theme:expr) => {
+        $crate::__soroban_render_emit!(@format $fmt @theme $theme);
     };
-    (json, markdown) => {
-        $crate::render_v1!();
-        $crate::render_formats!(markdown, json);
+    ($fmt:ident, styles, theme = $theme:expr) => {
+        $crate::__soroban_render_emit!(@format $fmt @styles @theme $theme);
     };
 
-    // ========================================================================
-    // Patterns with styles
-    // ========================================================================
-    (markdown, styles) => {
-        $crate::render_v1!();
-        $crate::render_formats!(markdown);
-        $crate::render_has_styles!();
+    // Dual format patterns
+    ($fmt1:ident, $fmt2:ident) => {
+        $crate::__soroban_render_emit!(@formats $fmt1 $fmt2);
     };
-    (json, styles) => {
-        $crate::render_v1!();
-        $crate::render_formats!(json);
-        $crate::render_has_styles!();
+    ($fmt1:ident, $fmt2:ident, styles) => {
+        $crate::__soroban_render_emit!(@formats $fmt1 $fmt2 @styles);
     };
-    (markdown, json, styles) => {
-        $crate::render_v1!();
-        $crate::render_formats!(markdown, json);
-        $crate::render_has_styles!();
+    ($fmt1:ident, $fmt2:ident, theme = $theme:expr) => {
+        $crate::__soroban_render_emit!(@formats $fmt1 $fmt2 @theme $theme);
     };
-    (json, markdown, styles) => {
-        $crate::render_v1!();
-        $crate::render_formats!(markdown, json);
-        $crate::render_has_styles!();
-    };
-
-    // ========================================================================
-    // Patterns with theme
-    // ========================================================================
-    (markdown, theme = $theme:expr) => {
-        $crate::render_v1!();
-        $crate::render_formats!(markdown);
-        $crate::render_theme!($theme);
-    };
-    (json, theme = $theme:expr) => {
-        $crate::render_v1!();
-        $crate::render_formats!(json);
-        $crate::render_theme!($theme);
-    };
-    (markdown, json, theme = $theme:expr) => {
-        $crate::render_v1!();
-        $crate::render_formats!(markdown, json);
-        $crate::render_theme!($theme);
-    };
-
-    // ========================================================================
-    // Patterns with both styles and theme
-    // ========================================================================
-    (markdown, styles, theme = $theme:expr) => {
-        $crate::render_v1!();
-        $crate::render_formats!(markdown);
-        $crate::render_has_styles!();
-        $crate::render_theme!($theme);
-    };
-    (json, styles, theme = $theme:expr) => {
-        $crate::render_v1!();
-        $crate::render_formats!(json);
-        $crate::render_has_styles!();
-        $crate::render_theme!($theme);
-    };
-    (markdown, json, styles, theme = $theme:expr) => {
-        $crate::render_v1!();
-        $crate::render_formats!(markdown, json);
-        $crate::render_has_styles!();
-        $crate::render_theme!($theme);
-    };
-    (json, markdown, styles, theme = $theme:expr) => {
-        $crate::render_v1!();
-        $crate::render_formats!(markdown, json);
-        $crate::render_has_styles!();
-        $crate::render_theme!($theme);
+    ($fmt1:ident, $fmt2:ident, styles, theme = $theme:expr) => {
+        $crate::__soroban_render_emit!(@formats $fmt1 $fmt2 @styles @theme $theme);
     };
 }
 

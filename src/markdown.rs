@@ -37,34 +37,102 @@ impl<'a> MarkdownBuilder<'a> {
     }
 
     // ========================================================================
+    // Private Helpers
+    // ========================================================================
+
+    /// Push a byte slice as Bytes.
+    fn push_bytes(&mut self, bytes: &[u8]) {
+        self.parts.push_back(Bytes::from_slice(self.env, bytes));
+    }
+
+    /// Push a string as Bytes.
+    fn push_str(&mut self, s: &str) {
+        self.parts
+            .push_back(Bytes::from_slice(self.env, s.as_bytes()));
+    }
+
+    /// Wrap text with a prefix and suffix (for bold, italic, code, strikethrough).
+    fn wrap_text(mut self, prefix: &[u8], text: &str, suffix: &[u8]) -> Self {
+        self.push_bytes(prefix);
+        self.push_str(text);
+        self.push_bytes(suffix);
+        self
+    }
+
+    /// Build a markdown link: `[text](protocol:target)`
+    fn build_link(mut self, text: &str, protocol: &[u8], target: &str) -> Self {
+        self.push_bytes(b"[");
+        self.push_str(text);
+        self.push_bytes(b"](");
+        self.push_bytes(protocol);
+        self.push_str(target);
+        self.push_bytes(b")");
+        self
+    }
+
+    /// Build a protocol link with optional args: `[text](protocol:target args)`
+    fn build_link_with_args(
+        mut self,
+        text: &str,
+        protocol: &[u8],
+        target: &str,
+        args: &str,
+    ) -> Self {
+        self.push_bytes(b"[");
+        self.push_str(text);
+        self.push_bytes(b"](");
+        self.push_bytes(protocol);
+        self.push_str(target);
+        if !args.is_empty() {
+            self.push_bytes(b" ");
+            self.push_str(args);
+        }
+        self.push_bytes(b")");
+        self
+    }
+
+    /// Build an aliased protocol link: `[text](protocol:@alias:method args)`
+    fn build_aliased_link(
+        mut self,
+        text: &str,
+        protocol: &[u8],
+        alias: &str,
+        method: &str,
+        args: &str,
+    ) -> Self {
+        self.push_bytes(b"[");
+        self.push_str(text);
+        self.push_bytes(b"](");
+        self.push_bytes(protocol);
+        self.push_bytes(b"@");
+        self.push_str(alias);
+        self.push_bytes(b":");
+        self.push_str(method);
+        if !args.is_empty() {
+            self.push_bytes(b" ");
+            self.push_str(args);
+        }
+        self.push_bytes(b")");
+        self
+    }
+
+    // ========================================================================
     // Headings
     // ========================================================================
 
     /// Add a level 1 heading.
-    pub fn h1(mut self, text: &str) -> Self {
-        self.parts.push_back(Bytes::from_slice(self.env, b"# "));
-        self.parts
-            .push_back(Bytes::from_slice(self.env, text.as_bytes()));
-        self.parts.push_back(Bytes::from_slice(self.env, b"\n\n"));
-        self
+    pub fn h1(self, text: &str) -> Self {
+        self.heading(1, text)
     }
 
     /// Add a level 2 heading.
-    pub fn h2(mut self, text: &str) -> Self {
-        self.parts.push_back(Bytes::from_slice(self.env, b"## "));
-        self.parts
-            .push_back(Bytes::from_slice(self.env, text.as_bytes()));
-        self.parts.push_back(Bytes::from_slice(self.env, b"\n\n"));
-        self
+    pub fn h2(self, text: &str) -> Self {
+        self.heading(2, text)
     }
 
     /// Add a level 3 heading.
-    pub fn h3(mut self, text: &str) -> Self {
-        self.parts.push_back(Bytes::from_slice(self.env, b"### "));
-        self.parts
-            .push_back(Bytes::from_slice(self.env, text.as_bytes()));
-        self.parts.push_back(Bytes::from_slice(self.env, b"\n\n"));
-        self
+    pub fn h3(self, text: &str) -> Self {
+        self.heading(3, text)
     }
 
     /// Add a heading at a specific level (1-6).
@@ -77,10 +145,9 @@ impl<'a> MarkdownBuilder<'a> {
             5 => b"##### ".as_slice(),
             _ => b"###### ".as_slice(),
         };
-        self.parts.push_back(Bytes::from_slice(self.env, prefix));
-        self.parts
-            .push_back(Bytes::from_slice(self.env, text.as_bytes()));
-        self.parts.push_back(Bytes::from_slice(self.env, b"\n\n"));
+        self.push_bytes(prefix);
+        self.push_str(text);
+        self.push_bytes(b"\n\n");
         self
     }
 
@@ -90,65 +157,44 @@ impl<'a> MarkdownBuilder<'a> {
 
     /// Add inline text (no trailing newline).
     pub fn text(mut self, text: &str) -> Self {
-        self.parts
-            .push_back(Bytes::from_slice(self.env, text.as_bytes()));
+        self.push_str(text);
         self
     }
 
     /// Add a paragraph (text followed by double newline).
-    pub fn paragraph(mut self, text: &str) -> Self {
-        self.parts
-            .push_back(Bytes::from_slice(self.env, text.as_bytes()));
-        self.parts.push_back(Bytes::from_slice(self.env, b"\n\n"));
-        self
+    pub fn paragraph(self, text: &str) -> Self {
+        self.wrap_text(b"", text, b"\n\n")
     }
 
     /// Add bold text.
-    pub fn bold(mut self, text: &str) -> Self {
-        self.parts.push_back(Bytes::from_slice(self.env, b"**"));
-        self.parts
-            .push_back(Bytes::from_slice(self.env, text.as_bytes()));
-        self.parts.push_back(Bytes::from_slice(self.env, b"**"));
-        self
+    pub fn bold(self, text: &str) -> Self {
+        self.wrap_text(b"**", text, b"**")
     }
 
     /// Add italic text.
-    pub fn italic(mut self, text: &str) -> Self {
-        self.parts.push_back(Bytes::from_slice(self.env, b"*"));
-        self.parts
-            .push_back(Bytes::from_slice(self.env, text.as_bytes()));
-        self.parts.push_back(Bytes::from_slice(self.env, b"*"));
-        self
+    pub fn italic(self, text: &str) -> Self {
+        self.wrap_text(b"*", text, b"*")
     }
 
     /// Add inline code.
-    pub fn code(mut self, text: &str) -> Self {
-        self.parts.push_back(Bytes::from_slice(self.env, b"`"));
-        self.parts
-            .push_back(Bytes::from_slice(self.env, text.as_bytes()));
-        self.parts.push_back(Bytes::from_slice(self.env, b"`"));
-        self
+    pub fn code(self, text: &str) -> Self {
+        self.wrap_text(b"`", text, b"`")
     }
 
     /// Add strikethrough text.
-    pub fn strikethrough(mut self, text: &str) -> Self {
-        self.parts.push_back(Bytes::from_slice(self.env, b"~~"));
-        self.parts
-            .push_back(Bytes::from_slice(self.env, text.as_bytes()));
-        self.parts.push_back(Bytes::from_slice(self.env, b"~~"));
-        self
+    pub fn strikethrough(self, text: &str) -> Self {
+        self.wrap_text(b"~~", text, b"~~")
     }
 
     /// Add a single newline.
     pub fn newline(mut self) -> Self {
-        self.parts.push_back(Bytes::from_slice(self.env, b"\n"));
+        self.push_bytes(b"\n");
         self
     }
 
     /// Add a horizontal rule.
     pub fn hr(mut self) -> Self {
-        self.parts
-            .push_back(Bytes::from_slice(self.env, b"\n---\n\n"));
+        self.push_bytes(b"\n---\n\n");
         self
     }
 
@@ -176,8 +222,7 @@ impl<'a> MarkdownBuilder<'a> {
 
     /// Add raw string slice.
     pub fn raw_str(mut self, s: &str) -> Self {
-        self.parts
-            .push_back(Bytes::from_slice(self.env, s.as_bytes()));
+        self.push_str(s);
         self
     }
 
@@ -186,30 +231,15 @@ impl<'a> MarkdownBuilder<'a> {
     // ========================================================================
 
     /// Add a standard markdown link.
-    pub fn link(mut self, text: &str, href: &str) -> Self {
-        self.parts.push_back(Bytes::from_slice(self.env, b"["));
-        self.parts
-            .push_back(Bytes::from_slice(self.env, text.as_bytes()));
-        self.parts.push_back(Bytes::from_slice(self.env, b"]("));
-        self.parts
-            .push_back(Bytes::from_slice(self.env, href.as_bytes()));
-        self.parts.push_back(Bytes::from_slice(self.env, b")"));
-        self
+    pub fn link(self, text: &str, href: &str) -> Self {
+        self.build_link(text, b"", href)
     }
 
     /// Add a render: protocol link for navigation.
     ///
     /// Creates: `[text](render:path)`
-    pub fn render_link(mut self, text: &str, path: &str) -> Self {
-        self.parts.push_back(Bytes::from_slice(self.env, b"["));
-        self.parts
-            .push_back(Bytes::from_slice(self.env, text.as_bytes()));
-        self.parts
-            .push_back(Bytes::from_slice(self.env, b"](render:"));
-        self.parts
-            .push_back(Bytes::from_slice(self.env, path.as_bytes()));
-        self.parts.push_back(Bytes::from_slice(self.env, b")"));
-        self
+    pub fn render_link(self, text: &str, path: &str) -> Self {
+        self.build_link(text, b"render:", path)
     }
 
     /// Add a tx: protocol link for transactions.
@@ -222,52 +252,29 @@ impl<'a> MarkdownBuilder<'a> {
     /// .tx_link("Delete", "delete_task", "{\"id\":1}")
     /// // Creates: [Delete](tx:delete_task {"id":1})
     /// ```
-    pub fn tx_link(mut self, text: &str, method: &str, args: &str) -> Self {
-        self.parts.push_back(Bytes::from_slice(self.env, b"["));
-        self.parts
-            .push_back(Bytes::from_slice(self.env, text.as_bytes()));
-        self.parts.push_back(Bytes::from_slice(self.env, b"](tx:"));
-        self.parts
-            .push_back(Bytes::from_slice(self.env, method.as_bytes()));
-        if !args.is_empty() {
-            self.parts.push_back(Bytes::from_slice(self.env, b" "));
-            self.parts
-                .push_back(Bytes::from_slice(self.env, args.as_bytes()));
-        }
-        self.parts.push_back(Bytes::from_slice(self.env, b")"));
-        self
+    pub fn tx_link(self, text: &str, method: &str, args: &str) -> Self {
+        self.build_link_with_args(text, b"tx:", method, args)
     }
 
     /// Add a tx: link with a dynamically built argument (id from u32).
     ///
     /// Creates: `[text](tx:method {"id":n})`
     pub fn tx_link_id(mut self, text: &str, method: &str, id: u32) -> Self {
-        self.parts.push_back(Bytes::from_slice(self.env, b"["));
-        self.parts
-            .push_back(Bytes::from_slice(self.env, text.as_bytes()));
-        self.parts.push_back(Bytes::from_slice(self.env, b"](tx:"));
-        self.parts
-            .push_back(Bytes::from_slice(self.env, method.as_bytes()));
-        self.parts
-            .push_back(Bytes::from_slice(self.env, b" {\"id\":"));
+        self.push_bytes(b"[");
+        self.push_str(text);
+        self.push_bytes(b"](tx:");
+        self.push_str(method);
+        self.push_bytes(b" {\"id\":");
         self.parts.push_back(u32_to_bytes(self.env, id));
-        self.parts.push_back(Bytes::from_slice(self.env, b"})"));
+        self.push_bytes(b"})");
         self
     }
 
     /// Add a form: protocol link for form submission.
     ///
     /// Creates: `[text](form:action)`
-    pub fn form_link(mut self, text: &str, action: &str) -> Self {
-        self.parts.push_back(Bytes::from_slice(self.env, b"["));
-        self.parts
-            .push_back(Bytes::from_slice(self.env, text.as_bytes()));
-        self.parts
-            .push_back(Bytes::from_slice(self.env, b"](form:"));
-        self.parts
-            .push_back(Bytes::from_slice(self.env, action.as_bytes()));
-        self.parts.push_back(Bytes::from_slice(self.env, b")"));
-        self
+    pub fn form_link(self, text: &str, action: &str) -> Self {
+        self.build_link(text, b"form:", action)
     }
 
     /// Add a form: link targeting a specific contract via registry alias.
@@ -280,19 +287,8 @@ impl<'a> MarkdownBuilder<'a> {
     /// .form_link_to("Update Settings", "admin", "set_chunk_size")
     /// // Generates: [Update Settings](form:@admin:set_chunk_size)
     /// ```
-    pub fn form_link_to(mut self, text: &str, alias: &str, method: &str) -> Self {
-        self.parts.push_back(Bytes::from_slice(self.env, b"["));
-        self.parts
-            .push_back(Bytes::from_slice(self.env, text.as_bytes()));
-        self.parts
-            .push_back(Bytes::from_slice(self.env, b"](form:@"));
-        self.parts
-            .push_back(Bytes::from_slice(self.env, alias.as_bytes()));
-        self.parts.push_back(Bytes::from_slice(self.env, b":"));
-        self.parts
-            .push_back(Bytes::from_slice(self.env, method.as_bytes()));
-        self.parts.push_back(Bytes::from_slice(self.env, b")"));
-        self
+    pub fn form_link_to(self, text: &str, alias: &str, method: &str) -> Self {
+        self.build_aliased_link(text, b"form:", alias, method, "")
     }
 
     /// Add a tx: link targeting a specific contract via registry alias.
@@ -305,23 +301,8 @@ impl<'a> MarkdownBuilder<'a> {
     /// .tx_link_to("Flag Post", "content", "flag_reply", r#"{"id":123}"#)
     /// // Generates: [Flag Post](tx:@content:flag_reply {"id":123})
     /// ```
-    pub fn tx_link_to(mut self, text: &str, alias: &str, method: &str, args: &str) -> Self {
-        self.parts.push_back(Bytes::from_slice(self.env, b"["));
-        self.parts
-            .push_back(Bytes::from_slice(self.env, text.as_bytes()));
-        self.parts.push_back(Bytes::from_slice(self.env, b"](tx:@"));
-        self.parts
-            .push_back(Bytes::from_slice(self.env, alias.as_bytes()));
-        self.parts.push_back(Bytes::from_slice(self.env, b":"));
-        self.parts
-            .push_back(Bytes::from_slice(self.env, method.as_bytes()));
-        if !args.is_empty() {
-            self.parts.push_back(Bytes::from_slice(self.env, b" "));
-            self.parts
-                .push_back(Bytes::from_slice(self.env, args.as_bytes()));
-        }
-        self.parts.push_back(Bytes::from_slice(self.env, b")"));
-        self
+    pub fn tx_link_to(self, text: &str, alias: &str, method: &str, args: &str) -> Self {
+        self.build_aliased_link(text, b"tx:", alias, method, args)
     }
 
     // ========================================================================
@@ -361,13 +342,11 @@ impl<'a> MarkdownBuilder<'a> {
     /// > content
     /// ```
     pub fn alert(mut self, alert_type: &str, content: &str) -> Self {
-        self.parts.push_back(Bytes::from_slice(self.env, b"> [!"));
-        self.parts
-            .push_back(Bytes::from_slice(self.env, alert_type.as_bytes()));
-        self.parts.push_back(Bytes::from_slice(self.env, b"]\n> "));
-        self.parts
-            .push_back(Bytes::from_slice(self.env, content.as_bytes()));
-        self.parts.push_back(Bytes::from_slice(self.env, b"\n\n"));
+        self.push_bytes(b"> [!");
+        self.push_str(alert_type);
+        self.push_bytes(b"]\n> ");
+        self.push_str(content);
+        self.push_bytes(b"\n\n");
         self
     }
 
@@ -379,8 +358,7 @@ impl<'a> MarkdownBuilder<'a> {
     ///
     /// Creates: `:::columns`
     pub fn columns_start(mut self) -> Self {
-        self.parts
-            .push_back(Bytes::from_slice(self.env, b":::columns\n"));
+        self.push_bytes(b":::columns\n");
         self
     }
 
@@ -388,7 +366,7 @@ impl<'a> MarkdownBuilder<'a> {
     ///
     /// Creates: `|||`
     pub fn column_separator(mut self) -> Self {
-        self.parts.push_back(Bytes::from_slice(self.env, b"|||\n"));
+        self.push_bytes(b"|||\n");
         self
     }
 
@@ -396,8 +374,7 @@ impl<'a> MarkdownBuilder<'a> {
     ///
     /// Creates: `:::`
     pub fn columns_end(mut self) -> Self {
-        self.parts
-            .push_back(Bytes::from_slice(self.env, b":::\n\n"));
+        self.push_bytes(b":::\n\n");
         self
     }
 
@@ -409,15 +386,11 @@ impl<'a> MarkdownBuilder<'a> {
     ///
     /// Creates: `{{include contract=ID func="name"}}`
     pub fn include(mut self, contract_id: &str, func: &str) -> Self {
-        self.parts
-            .push_back(Bytes::from_slice(self.env, b"{{include contract="));
-        self.parts
-            .push_back(Bytes::from_slice(self.env, contract_id.as_bytes()));
-        self.parts
-            .push_back(Bytes::from_slice(self.env, b" func=\""));
-        self.parts
-            .push_back(Bytes::from_slice(self.env, func.as_bytes()));
-        self.parts.push_back(Bytes::from_slice(self.env, b"\"}}"));
+        self.push_bytes(b"{{include contract=");
+        self.push_str(contract_id);
+        self.push_bytes(b" func=\"");
+        self.push_str(func);
+        self.push_bytes(b"\"}}");
         self
     }
 
@@ -425,19 +398,13 @@ impl<'a> MarkdownBuilder<'a> {
     ///
     /// Creates: `{{include contract=ID func="name" path="path"}}`
     pub fn include_with_path(mut self, contract_id: &str, func: &str, path: &str) -> Self {
-        self.parts
-            .push_back(Bytes::from_slice(self.env, b"{{include contract="));
-        self.parts
-            .push_back(Bytes::from_slice(self.env, contract_id.as_bytes()));
-        self.parts
-            .push_back(Bytes::from_slice(self.env, b" func=\""));
-        self.parts
-            .push_back(Bytes::from_slice(self.env, func.as_bytes()));
-        self.parts
-            .push_back(Bytes::from_slice(self.env, b"\" path=\""));
-        self.parts
-            .push_back(Bytes::from_slice(self.env, path.as_bytes()));
-        self.parts.push_back(Bytes::from_slice(self.env, b"\"}}"));
+        self.push_bytes(b"{{include contract=");
+        self.push_str(contract_id);
+        self.push_bytes(b" func=\"");
+        self.push_str(func);
+        self.push_bytes(b"\" path=\"");
+        self.push_str(path);
+        self.push_bytes(b"\"}}");
         self
     }
 
@@ -449,16 +416,11 @@ impl<'a> MarkdownBuilder<'a> {
     ///
     /// Creates: `<input name="name" placeholder="placeholder" />`
     pub fn input(mut self, name: &str, placeholder: &str) -> Self {
-        self.parts
-            .push_back(Bytes::from_slice(self.env, b"<input name=\""));
-        self.parts
-            .push_back(Bytes::from_slice(self.env, name.as_bytes()));
-        self.parts
-            .push_back(Bytes::from_slice(self.env, b"\" placeholder=\""));
-        self.parts
-            .push_back(Bytes::from_slice(self.env, placeholder.as_bytes()));
-        self.parts
-            .push_back(Bytes::from_slice(self.env, b"\" />\n"));
+        self.push_bytes(b"<input name=\"");
+        self.push_str(name);
+        self.push_bytes(b"\" placeholder=\"");
+        self.push_str(placeholder);
+        self.push_bytes(b"\" />\n");
         self
     }
 
@@ -468,20 +430,13 @@ impl<'a> MarkdownBuilder<'a> {
     ///
     /// Use this when editing existing data so users can see and modify the current value.
     pub fn input_with_value(mut self, name: &str, placeholder: &str, value: &str) -> Self {
-        self.parts
-            .push_back(Bytes::from_slice(self.env, b"<input name=\""));
-        self.parts
-            .push_back(Bytes::from_slice(self.env, name.as_bytes()));
-        self.parts
-            .push_back(Bytes::from_slice(self.env, b"\" placeholder=\""));
-        self.parts
-            .push_back(Bytes::from_slice(self.env, placeholder.as_bytes()));
-        self.parts
-            .push_back(Bytes::from_slice(self.env, b"\" value=\""));
-        self.parts
-            .push_back(Bytes::from_slice(self.env, value.as_bytes()));
-        self.parts
-            .push_back(Bytes::from_slice(self.env, b"\" />\n"));
+        self.push_bytes(b"<input name=\"");
+        self.push_str(name);
+        self.push_bytes(b"\" placeholder=\"");
+        self.push_str(placeholder);
+        self.push_bytes(b"\" value=\"");
+        self.push_str(value);
+        self.push_bytes(b"\" />\n");
         self
     }
 
@@ -496,19 +451,13 @@ impl<'a> MarkdownBuilder<'a> {
         placeholder: &str,
         value: &String,
     ) -> Self {
-        self.parts
-            .push_back(Bytes::from_slice(self.env, b"<input name=\""));
-        self.parts
-            .push_back(Bytes::from_slice(self.env, name.as_bytes()));
-        self.parts
-            .push_back(Bytes::from_slice(self.env, b"\" placeholder=\""));
-        self.parts
-            .push_back(Bytes::from_slice(self.env, placeholder.as_bytes()));
-        self.parts
-            .push_back(Bytes::from_slice(self.env, b"\" value=\""));
+        self.push_bytes(b"<input name=\"");
+        self.push_str(name);
+        self.push_bytes(b"\" placeholder=\"");
+        self.push_str(placeholder);
+        self.push_bytes(b"\" value=\"");
         self.parts.push_back(string_to_bytes(self.env, value));
-        self.parts
-            .push_back(Bytes::from_slice(self.env, b"\" />\n"));
+        self.push_bytes(b"\" />\n");
         self
     }
 
@@ -518,19 +467,13 @@ impl<'a> MarkdownBuilder<'a> {
     ///
     /// Use this when editing existing numeric data so users can see and modify the current value.
     pub fn input_with_value_number(mut self, name: &str, placeholder: &str, value: u32) -> Self {
-        self.parts
-            .push_back(Bytes::from_slice(self.env, b"<input name=\""));
-        self.parts
-            .push_back(Bytes::from_slice(self.env, name.as_bytes()));
-        self.parts
-            .push_back(Bytes::from_slice(self.env, b"\" placeholder=\""));
-        self.parts
-            .push_back(Bytes::from_slice(self.env, placeholder.as_bytes()));
-        self.parts
-            .push_back(Bytes::from_slice(self.env, b"\" value=\""));
+        self.push_bytes(b"<input name=\"");
+        self.push_str(name);
+        self.push_bytes(b"\" placeholder=\"");
+        self.push_str(placeholder);
+        self.push_bytes(b"\" value=\"");
         self.parts.push_back(u32_to_bytes(self.env, value));
-        self.parts
-            .push_back(Bytes::from_slice(self.env, b"\" />\n"));
+        self.push_bytes(b"\" />\n");
         self
     }
 
@@ -540,18 +483,11 @@ impl<'a> MarkdownBuilder<'a> {
     ///
     /// Useful for passing data with form submissions that shouldn't be visible to users.
     pub fn hidden_input(mut self, name: &str, value: &str) -> Self {
-        self.parts.push_back(Bytes::from_slice(
-            self.env,
-            b"<input type=\"hidden\" name=\"",
-        ));
-        self.parts
-            .push_back(Bytes::from_slice(self.env, name.as_bytes()));
-        self.parts
-            .push_back(Bytes::from_slice(self.env, b"\" value=\""));
-        self.parts
-            .push_back(Bytes::from_slice(self.env, value.as_bytes()));
-        self.parts
-            .push_back(Bytes::from_slice(self.env, b"\" />\n"));
+        self.push_bytes(b"<input type=\"hidden\" name=\"");
+        self.push_str(name);
+        self.push_bytes(b"\" value=\"");
+        self.push_str(value);
+        self.push_bytes(b"\" />\n");
         self
     }
 
@@ -560,34 +496,19 @@ impl<'a> MarkdownBuilder<'a> {
     /// Creates a dropdown with "Yes" (true) and "No" (false) options.
     /// The current value determines which option is pre-selected.
     pub fn select_bool(mut self, name: &str, current_value: bool) -> Self {
-        self.parts
-            .push_back(Bytes::from_slice(self.env, b"<select name=\""));
-        self.parts
-            .push_back(Bytes::from_slice(self.env, name.as_bytes()));
-        self.parts.push_back(Bytes::from_slice(self.env, b"\">\n"));
+        self.push_bytes(b"<select name=\"");
+        self.push_str(name);
+        self.push_bytes(b"\">\n");
 
         if current_value {
-            self.parts.push_back(Bytes::from_slice(
-                self.env,
-                b"<option value=\"true\" selected>Yes</option>\n",
-            ));
-            self.parts.push_back(Bytes::from_slice(
-                self.env,
-                b"<option value=\"false\">No</option>\n",
-            ));
+            self.push_bytes(b"<option value=\"true\" selected>Yes</option>\n");
+            self.push_bytes(b"<option value=\"false\">No</option>\n");
         } else {
-            self.parts.push_back(Bytes::from_slice(
-                self.env,
-                b"<option value=\"true\">Yes</option>\n",
-            ));
-            self.parts.push_back(Bytes::from_slice(
-                self.env,
-                b"<option value=\"false\" selected>No</option>\n",
-            ));
+            self.push_bytes(b"<option value=\"true\">Yes</option>\n");
+            self.push_bytes(b"<option value=\"false\" selected>No</option>\n");
         }
 
-        self.parts
-            .push_back(Bytes::from_slice(self.env, b"</select>\n"));
+        self.push_bytes(b"</select>\n");
         self
     }
 
@@ -618,19 +539,13 @@ impl<'a> MarkdownBuilder<'a> {
     ///
     /// Creates: `<textarea name="name" rows="N" placeholder="placeholder"></textarea>`
     pub fn textarea(mut self, name: &str, rows: u8, placeholder: &str) -> Self {
-        self.parts
-            .push_back(Bytes::from_slice(self.env, b"<textarea name=\""));
-        self.parts
-            .push_back(Bytes::from_slice(self.env, name.as_bytes()));
-        self.parts
-            .push_back(Bytes::from_slice(self.env, b"\" rows=\""));
+        self.push_bytes(b"<textarea name=\"");
+        self.push_str(name);
+        self.push_bytes(b"\" rows=\"");
         self.parts.push_back(u32_to_bytes(self.env, rows as u32));
-        self.parts
-            .push_back(Bytes::from_slice(self.env, b"\" placeholder=\""));
-        self.parts
-            .push_back(Bytes::from_slice(self.env, placeholder.as_bytes()));
-        self.parts
-            .push_back(Bytes::from_slice(self.env, b"\"></textarea>\n"));
+        self.push_bytes(b"\" placeholder=\"");
+        self.push_str(placeholder);
+        self.push_bytes(b"\"></textarea>\n");
         self
     }
 
@@ -646,22 +561,15 @@ impl<'a> MarkdownBuilder<'a> {
         placeholder: &str,
         value: &str,
     ) -> Self {
-        self.parts
-            .push_back(Bytes::from_slice(self.env, b"<textarea name=\""));
-        self.parts
-            .push_back(Bytes::from_slice(self.env, name.as_bytes()));
-        self.parts
-            .push_back(Bytes::from_slice(self.env, b"\" rows=\""));
+        self.push_bytes(b"<textarea name=\"");
+        self.push_str(name);
+        self.push_bytes(b"\" rows=\"");
         self.parts.push_back(u32_to_bytes(self.env, rows as u32));
-        self.parts
-            .push_back(Bytes::from_slice(self.env, b"\" placeholder=\""));
-        self.parts
-            .push_back(Bytes::from_slice(self.env, placeholder.as_bytes()));
-        self.parts.push_back(Bytes::from_slice(self.env, b"\">"));
-        self.parts
-            .push_back(Bytes::from_slice(self.env, value.as_bytes()));
-        self.parts
-            .push_back(Bytes::from_slice(self.env, b"</textarea>\n"));
+        self.push_bytes(b"\" placeholder=\"");
+        self.push_str(placeholder);
+        self.push_bytes(b"\">");
+        self.push_str(value);
+        self.push_bytes(b"</textarea>\n");
         self
     }
 
@@ -677,21 +585,15 @@ impl<'a> MarkdownBuilder<'a> {
         placeholder: &str,
         value: &String,
     ) -> Self {
-        self.parts
-            .push_back(Bytes::from_slice(self.env, b"<textarea name=\""));
-        self.parts
-            .push_back(Bytes::from_slice(self.env, name.as_bytes()));
-        self.parts
-            .push_back(Bytes::from_slice(self.env, b"\" rows=\""));
+        self.push_bytes(b"<textarea name=\"");
+        self.push_str(name);
+        self.push_bytes(b"\" rows=\"");
         self.parts.push_back(u32_to_bytes(self.env, rows as u32));
-        self.parts
-            .push_back(Bytes::from_slice(self.env, b"\" placeholder=\""));
-        self.parts
-            .push_back(Bytes::from_slice(self.env, placeholder.as_bytes()));
-        self.parts.push_back(Bytes::from_slice(self.env, b"\">"));
+        self.push_bytes(b"\" placeholder=\"");
+        self.push_str(placeholder);
+        self.push_bytes(b"\">");
         self.parts.push_back(string_to_bytes(self.env, value));
-        self.parts
-            .push_back(Bytes::from_slice(self.env, b"</textarea>\n"));
+        self.push_bytes(b"</textarea>\n");
         self
     }
 
@@ -702,21 +604,13 @@ impl<'a> MarkdownBuilder<'a> {
     /// When rendered in a viewer that supports it, this will display a rich markdown editor
     /// instead of a plain textarea. Falls back to a regular textarea in unsupported viewers.
     pub fn textarea_markdown(mut self, name: &str, rows: u8, placeholder: &str) -> Self {
-        self.parts
-            .push_back(Bytes::from_slice(self.env, b"<textarea name=\""));
-        self.parts
-            .push_back(Bytes::from_slice(self.env, name.as_bytes()));
-        self.parts.push_back(Bytes::from_slice(
-            self.env,
-            b"\" data-editor=\"markdown\" rows=\"",
-        ));
+        self.push_bytes(b"<textarea name=\"");
+        self.push_str(name);
+        self.push_bytes(b"\" data-editor=\"markdown\" rows=\"");
         self.parts.push_back(u32_to_bytes(self.env, rows as u32));
-        self.parts
-            .push_back(Bytes::from_slice(self.env, b"\" placeholder=\""));
-        self.parts
-            .push_back(Bytes::from_slice(self.env, placeholder.as_bytes()));
-        self.parts
-            .push_back(Bytes::from_slice(self.env, b"\"></textarea>\n"));
+        self.push_bytes(b"\" placeholder=\"");
+        self.push_str(placeholder);
+        self.push_bytes(b"\"></textarea>\n");
         self
     }
 
@@ -734,24 +628,15 @@ impl<'a> MarkdownBuilder<'a> {
         placeholder: &str,
         value: &str,
     ) -> Self {
-        self.parts
-            .push_back(Bytes::from_slice(self.env, b"<textarea name=\""));
-        self.parts
-            .push_back(Bytes::from_slice(self.env, name.as_bytes()));
-        self.parts.push_back(Bytes::from_slice(
-            self.env,
-            b"\" data-editor=\"markdown\" rows=\"",
-        ));
+        self.push_bytes(b"<textarea name=\"");
+        self.push_str(name);
+        self.push_bytes(b"\" data-editor=\"markdown\" rows=\"");
         self.parts.push_back(u32_to_bytes(self.env, rows as u32));
-        self.parts
-            .push_back(Bytes::from_slice(self.env, b"\" placeholder=\""));
-        self.parts
-            .push_back(Bytes::from_slice(self.env, placeholder.as_bytes()));
-        self.parts.push_back(Bytes::from_slice(self.env, b"\">"));
-        self.parts
-            .push_back(Bytes::from_slice(self.env, value.as_bytes()));
-        self.parts
-            .push_back(Bytes::from_slice(self.env, b"</textarea>\n"));
+        self.push_bytes(b"\" placeholder=\"");
+        self.push_str(placeholder);
+        self.push_bytes(b"\">");
+        self.push_str(value);
+        self.push_bytes(b"</textarea>\n");
         self
     }
 
@@ -769,23 +654,15 @@ impl<'a> MarkdownBuilder<'a> {
         placeholder: &str,
         value: &String,
     ) -> Self {
-        self.parts
-            .push_back(Bytes::from_slice(self.env, b"<textarea name=\""));
-        self.parts
-            .push_back(Bytes::from_slice(self.env, name.as_bytes()));
-        self.parts.push_back(Bytes::from_slice(
-            self.env,
-            b"\" data-editor=\"markdown\" rows=\"",
-        ));
+        self.push_bytes(b"<textarea name=\"");
+        self.push_str(name);
+        self.push_bytes(b"\" data-editor=\"markdown\" rows=\"");
         self.parts.push_back(u32_to_bytes(self.env, rows as u32));
-        self.parts
-            .push_back(Bytes::from_slice(self.env, b"\" placeholder=\""));
-        self.parts
-            .push_back(Bytes::from_slice(self.env, placeholder.as_bytes()));
-        self.parts.push_back(Bytes::from_slice(self.env, b"\">"));
+        self.push_bytes(b"\" placeholder=\"");
+        self.push_str(placeholder);
+        self.push_bytes(b"\">");
         self.parts.push_back(string_to_bytes(self.env, value));
-        self.parts
-            .push_back(Bytes::from_slice(self.env, b"</textarea>\n"));
+        self.push_bytes(b"</textarea>\n");
         self
     }
 
@@ -804,24 +681,15 @@ impl<'a> MarkdownBuilder<'a> {
         placeholder: &str,
         value: &String,
     ) -> Self {
-        self.parts
-            .push_back(Bytes::from_slice(self.env, b"<textarea name=\""));
-        self.parts
-            .push_back(Bytes::from_slice(self.env, name.as_bytes()));
-        self.parts.push_back(Bytes::from_slice(
-            self.env,
-            b"\" data-editor=\"markdown\" rows=\"",
-        ));
+        self.push_bytes(b"<textarea name=\"");
+        self.push_str(name);
+        self.push_bytes(b"\" data-editor=\"markdown\" rows=\"");
         self.parts.push_back(u32_to_bytes(self.env, rows as u32));
-        self.parts
-            .push_back(Bytes::from_slice(self.env, b"\" placeholder=\""));
-        self.parts
-            .push_back(Bytes::from_slice(self.env, placeholder.as_bytes()));
-        self.parts
-            .push_back(Bytes::from_slice(self.env, b"\">{{noparse}}"));
+        self.push_bytes(b"\" placeholder=\"");
+        self.push_str(placeholder);
+        self.push_bytes(b"\">{{noparse}}");
         self.parts.push_back(string_to_bytes(self.env, value));
-        self.parts
-            .push_back(Bytes::from_slice(self.env, b"{{/noparse}}</textarea>\n"));
+        self.push_bytes(b"{{/noparse}}</textarea>\n");
         self
     }
 
@@ -832,26 +700,18 @@ impl<'a> MarkdownBuilder<'a> {
     /// Add a list item.
     ///
     /// Creates: `- text`
-    pub fn list_item(mut self, text: &str) -> Self {
-        self.parts.push_back(Bytes::from_slice(self.env, b"- "));
-        self.parts
-            .push_back(Bytes::from_slice(self.env, text.as_bytes()));
-        self.parts.push_back(Bytes::from_slice(self.env, b"\n"));
-        self
+    pub fn list_item(self, text: &str) -> Self {
+        self.wrap_text(b"- ", text, b"\n")
     }
 
     /// Add a checkbox list item.
     ///
     /// Creates: `- [x] text` or `- [ ] text`
     pub fn checkbox(mut self, checked: bool, text: &str) -> Self {
-        if checked {
-            self.parts.push_back(Bytes::from_slice(self.env, b"- [x] "));
-        } else {
-            self.parts.push_back(Bytes::from_slice(self.env, b"- [ ] "));
-        }
-        self.parts
-            .push_back(Bytes::from_slice(self.env, text.as_bytes()));
-        self.parts.push_back(Bytes::from_slice(self.env, b"\n"));
+        let prefix = if checked { b"- [x] " } else { b"- [ ] " };
+        self.push_bytes(prefix);
+        self.push_str(text);
+        self.push_bytes(b"\n");
         self
     }
 
@@ -862,12 +722,8 @@ impl<'a> MarkdownBuilder<'a> {
     /// Add a blockquote.
     ///
     /// Creates: `> text`
-    pub fn blockquote(mut self, text: &str) -> Self {
-        self.parts.push_back(Bytes::from_slice(self.env, b"> "));
-        self.parts
-            .push_back(Bytes::from_slice(self.env, text.as_bytes()));
-        self.parts.push_back(Bytes::from_slice(self.env, b"\n\n"));
-        self
+    pub fn blockquote(self, text: &str) -> Self {
+        self.wrap_text(b"> ", text, b"\n\n")
     }
 
     // ========================================================================
@@ -889,11 +745,9 @@ impl<'a> MarkdownBuilder<'a> {
     ///     .div_end()
     /// ```
     pub fn div_start(mut self, classes: &str) -> Self {
-        self.parts
-            .push_back(Bytes::from_slice(self.env, b"<div class=\""));
-        self.parts
-            .push_back(Bytes::from_slice(self.env, classes.as_bytes()));
-        self.parts.push_back(Bytes::from_slice(self.env, b"\">\n"));
+        self.push_bytes(b"<div class=\"");
+        self.push_str(classes);
+        self.push_bytes(b"\">\n");
         self
     }
 
@@ -901,15 +755,11 @@ impl<'a> MarkdownBuilder<'a> {
     ///
     /// Creates: `<div class="classes" style="style">`
     pub fn div_start_styled(mut self, classes: &str, style: &str) -> Self {
-        self.parts
-            .push_back(Bytes::from_slice(self.env, b"<div class=\""));
-        self.parts
-            .push_back(Bytes::from_slice(self.env, classes.as_bytes()));
-        self.parts
-            .push_back(Bytes::from_slice(self.env, b"\" style=\""));
-        self.parts
-            .push_back(Bytes::from_slice(self.env, style.as_bytes()));
-        self.parts.push_back(Bytes::from_slice(self.env, b"\">\n"));
+        self.push_bytes(b"<div class=\"");
+        self.push_str(classes);
+        self.push_bytes(b"\" style=\"");
+        self.push_str(style);
+        self.push_bytes(b"\">\n");
         self
     }
 
@@ -917,8 +767,7 @@ impl<'a> MarkdownBuilder<'a> {
     ///
     /// Creates: `</div>`
     pub fn div_end(mut self) -> Self {
-        self.parts
-            .push_back(Bytes::from_slice(self.env, b"</div>\n"));
+        self.push_bytes(b"</div>\n");
         self
     }
 
@@ -926,11 +775,9 @@ impl<'a> MarkdownBuilder<'a> {
     ///
     /// Creates: `<span class="classes">`
     pub fn span_start(mut self, classes: &str) -> Self {
-        self.parts
-            .push_back(Bytes::from_slice(self.env, b"<span class=\""));
-        self.parts
-            .push_back(Bytes::from_slice(self.env, classes.as_bytes()));
-        self.parts.push_back(Bytes::from_slice(self.env, b"\">"));
+        self.push_bytes(b"<span class=\"");
+        self.push_str(classes);
+        self.push_bytes(b"\">");
         self
     }
 
@@ -938,8 +785,7 @@ impl<'a> MarkdownBuilder<'a> {
     ///
     /// Creates: `</span>`
     pub fn span_end(mut self) -> Self {
-        self.parts
-            .push_back(Bytes::from_slice(self.env, b"</span>"));
+        self.push_bytes(b"</span>");
         self
     }
 
@@ -964,19 +810,15 @@ impl<'a> MarkdownBuilder<'a> {
     ///     .continuation("comments", 5, Some(50))  // 45 more to load
     /// ```
     pub fn continuation(mut self, collection: &str, from_index: u32, total: Option<u32>) -> Self {
-        self.parts
-            .push_back(Bytes::from_slice(self.env, b"{{continue collection=\""));
-        self.parts
-            .push_back(Bytes::from_slice(self.env, collection.as_bytes()));
-        self.parts
-            .push_back(Bytes::from_slice(self.env, b"\" from="));
+        self.push_bytes(b"{{continue collection=\"");
+        self.push_str(collection);
+        self.push_bytes(b"\" from=");
         self.parts.push_back(u32_to_bytes(self.env, from_index));
         if let Some(t) = total {
-            self.parts
-                .push_back(Bytes::from_slice(self.env, b" total="));
+            self.push_bytes(b" total=");
             self.parts.push_back(u32_to_bytes(self.env, t));
         }
-        self.parts.push_back(Bytes::from_slice(self.env, b"}}"));
+        self.push_bytes(b"}}");
         self
     }
 
@@ -986,14 +828,11 @@ impl<'a> MarkdownBuilder<'a> {
     ///
     /// Creates: `{{chunk collection="name" index=N}}`
     pub fn chunk_ref(mut self, collection: &str, index: u32) -> Self {
-        self.parts
-            .push_back(Bytes::from_slice(self.env, b"{{chunk collection=\""));
-        self.parts
-            .push_back(Bytes::from_slice(self.env, collection.as_bytes()));
-        self.parts
-            .push_back(Bytes::from_slice(self.env, b"\" index="));
+        self.push_bytes(b"{{chunk collection=\"");
+        self.push_str(collection);
+        self.push_bytes(b"\" index=");
         self.parts.push_back(u32_to_bytes(self.env, index));
-        self.parts.push_back(Bytes::from_slice(self.env, b"}}"));
+        self.push_bytes(b"}}");
         self
     }
 
@@ -1008,18 +847,13 @@ impl<'a> MarkdownBuilder<'a> {
         index: u32,
         placeholder: &str,
     ) -> Self {
-        self.parts
-            .push_back(Bytes::from_slice(self.env, b"{{chunk collection=\""));
-        self.parts
-            .push_back(Bytes::from_slice(self.env, collection.as_bytes()));
-        self.parts
-            .push_back(Bytes::from_slice(self.env, b"\" index="));
+        self.push_bytes(b"{{chunk collection=\"");
+        self.push_str(collection);
+        self.push_bytes(b"\" index=");
         self.parts.push_back(u32_to_bytes(self.env, index));
-        self.parts
-            .push_back(Bytes::from_slice(self.env, b" placeholder=\""));
-        self.parts
-            .push_back(Bytes::from_slice(self.env, placeholder.as_bytes()));
-        self.parts.push_back(Bytes::from_slice(self.env, b"\"}}"));
+        self.push_bytes(b" placeholder=\"");
+        self.push_str(placeholder);
+        self.push_bytes(b"\"}}");
         self
     }
 
@@ -1029,20 +863,15 @@ impl<'a> MarkdownBuilder<'a> {
     ///
     /// Creates: `{{continue collection="name" page=N per_page=M total=T}}`
     pub fn continue_page(mut self, collection: &str, page: u32, per_page: u32, total: u32) -> Self {
-        self.parts
-            .push_back(Bytes::from_slice(self.env, b"{{continue collection=\""));
-        self.parts
-            .push_back(Bytes::from_slice(self.env, collection.as_bytes()));
-        self.parts
-            .push_back(Bytes::from_slice(self.env, b"\" page="));
+        self.push_bytes(b"{{continue collection=\"");
+        self.push_str(collection);
+        self.push_bytes(b"\" page=");
         self.parts.push_back(u32_to_bytes(self.env, page));
-        self.parts
-            .push_back(Bytes::from_slice(self.env, b" per_page="));
+        self.push_bytes(b" per_page=");
         self.parts.push_back(u32_to_bytes(self.env, per_page));
-        self.parts
-            .push_back(Bytes::from_slice(self.env, b" total="));
+        self.push_bytes(b" total=");
         self.parts.push_back(u32_to_bytes(self.env, total));
-        self.parts.push_back(Bytes::from_slice(self.env, b"}}"));
+        self.push_bytes(b"}}");
         self
     }
 
@@ -1064,11 +893,9 @@ impl<'a> MarkdownBuilder<'a> {
     ///     .render_continue("/b/1/t/0/replies/10")  // load more from offset 10
     /// ```
     pub fn render_continue(mut self, path: &str) -> Self {
-        self.parts
-            .push_back(Bytes::from_slice(self.env, b"{{render path=\""));
-        self.parts
-            .push_back(Bytes::from_slice(self.env, path.as_bytes()));
-        self.parts.push_back(Bytes::from_slice(self.env, b"\"}}"));
+        self.push_bytes(b"{{render path=\"");
+        self.push_str(path);
+        self.push_bytes(b"\"}}");
         self
     }
 

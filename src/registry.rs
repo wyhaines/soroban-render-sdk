@@ -232,14 +232,11 @@ impl BaseRegistry {
 
         let mut result = Bytes::from_slice(env, b"{{aliases ");
 
-        // Iterate over all registered contracts
-        for key in contracts.keys() {
-            if let Some(addr) = contracts.get(key.clone()) {
-                result.append(&symbol_to_bytes(env, &key));
-                result.append(&Bytes::from_slice(env, b"="));
-                result.append(&address_to_bytes(env, &addr));
-                result.append(&Bytes::from_slice(env, b" "));
-            }
+        for (alias, addr) in contracts.iter() {
+            result.append(&symbol_to_bytes(env, &alias));
+            result.append(&Bytes::from_slice(env, b"="));
+            result.append(&address_to_bytes(env, &addr));
+            result.append(&Bytes::from_slice(env, b" "));
         }
 
         result.append(&Bytes::from_slice(env, b"}}"));

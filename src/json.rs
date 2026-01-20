@@ -15,7 +15,7 @@
 //!     .build();
 //! ```
 
-use crate::bytes::{concat_bytes, escape_json_bytes, string_to_bytes, u32_to_bytes};
+use crate::bytes::{concat_bytes, escape_json_bytes, escape_json_string, u32_to_bytes};
 use soroban_sdk::{Bytes, Env, String, Vec};
 
 /// A builder for constructing JSON UI documents.
@@ -83,25 +83,7 @@ impl<'a> JsonDocument<'a> {
         self.parts.push_back(u32_to_bytes(self.env, level as u32));
         self.parts
             .push_back(Bytes::from_slice(self.env, b",\"text\":\""));
-        let text_bytes = string_to_bytes(self.env, text);
-        // Need to escape the bytes
-        for i in 0..text_bytes.len() {
-            if let Some(b) = text_bytes.get(i) {
-                match b {
-                    b'"' => {
-                        self.parts.push_back(Bytes::from_slice(self.env, b"\\\""));
-                    }
-                    b'\\' => {
-                        self.parts.push_back(Bytes::from_slice(self.env, b"\\\\"));
-                    }
-                    _ => {
-                        let mut single = Bytes::new(self.env);
-                        single.push_back(b);
-                        self.parts.push_back(single);
-                    }
-                }
-            }
-        }
+        self.parts.push_back(escape_json_string(self.env, text));
         self.parts.push_back(Bytes::from_slice(self.env, b"\"}"));
         self
     }
@@ -126,27 +108,7 @@ impl<'a> JsonDocument<'a> {
             self.env,
             b"{\"type\":\"text\",\"content\":\"",
         ));
-        let content_bytes = string_to_bytes(self.env, content);
-        for i in 0..content_bytes.len() {
-            if let Some(b) = content_bytes.get(i) {
-                match b {
-                    b'"' => {
-                        self.parts.push_back(Bytes::from_slice(self.env, b"\\\""));
-                    }
-                    b'\\' => {
-                        self.parts.push_back(Bytes::from_slice(self.env, b"\\\\"));
-                    }
-                    b'\n' => {
-                        self.parts.push_back(Bytes::from_slice(self.env, b"\\n"));
-                    }
-                    _ => {
-                        let mut single = Bytes::new(self.env);
-                        single.push_back(b);
-                        self.parts.push_back(single);
-                    }
-                }
-            }
-        }
+        self.parts.push_back(escape_json_string(self.env, content));
         self.parts.push_back(Bytes::from_slice(self.env, b"\"}"));
         self
     }
@@ -352,24 +314,7 @@ impl<'a> JsonDocument<'a> {
         self.parts.push_back(u32_to_bytes(self.env, id));
         self.parts
             .push_back(Bytes::from_slice(self.env, b",\"text\":\""));
-        let text_bytes = string_to_bytes(self.env, text);
-        for i in 0..text_bytes.len() {
-            if let Some(b) = text_bytes.get(i) {
-                match b {
-                    b'"' => {
-                        self.parts.push_back(Bytes::from_slice(self.env, b"\\\""));
-                    }
-                    b'\\' => {
-                        self.parts.push_back(Bytes::from_slice(self.env, b"\\\\"));
-                    }
-                    _ => {
-                        let mut single = Bytes::new(self.env);
-                        single.push_back(b);
-                        self.parts.push_back(single);
-                    }
-                }
-            }
-        }
+        self.parts.push_back(escape_json_string(self.env, text));
         self.parts
             .push_back(Bytes::from_slice(self.env, b"\",\"completed\":"));
         if completed {

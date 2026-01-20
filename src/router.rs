@@ -513,25 +513,7 @@ fn pattern_matches(env: &Env, path: &Bytes, pattern: &[u8]) -> bool {
 
 /// Split a path pattern (byte slice) into segments.
 fn split_path(env: &Env, path: &[u8]) -> soroban_sdk::Vec<Bytes> {
-    let mut segments = soroban_sdk::Vec::new(env);
-    let mut current = Bytes::new(env);
-
-    for &b in path {
-        if b == b'/' {
-            if !current.is_empty() {
-                segments.push_back(current);
-                current = Bytes::new(env);
-            }
-        } else {
-            current.push_back(b);
-        }
-    }
-
-    if !current.is_empty() {
-        segments.push_back(current);
-    }
-
-    segments
+    split_path_bytes(env, &Bytes::from_slice(env, path))
 }
 
 /// Split a path (Bytes) into segments.
@@ -572,17 +554,21 @@ fn bytes_eq_slice(bytes: &Bytes, slice: &[u8]) -> bool {
     true
 }
 
-/// Parse Bytes as a u32.
-fn parse_bytes_as_u32(bytes: &Bytes) -> Option<u32> {
+/// Parse Bytes as an unsigned integer.
+fn parse_bytes_as_uint<T>(bytes: &Bytes) -> Option<T>
+where
+    T: From<u8> + core::ops::Mul<Output = T> + core::ops::Add<Output = T> + Copy,
+{
     if bytes.is_empty() {
         return None;
     }
 
-    let mut result: u32 = 0;
+    let ten = T::from(10);
+    let mut result = T::from(0);
     for i in 0..bytes.len() {
         if let Some(b) = bytes.get(i) {
             if b.is_ascii_digit() {
-                result = result * 10 + (b - b'0') as u32;
+                result = result * ten + T::from(b - b'0');
             } else {
                 return None;
             }
@@ -591,23 +577,14 @@ fn parse_bytes_as_u32(bytes: &Bytes) -> Option<u32> {
     Some(result)
 }
 
+/// Parse Bytes as a u32.
+fn parse_bytes_as_u32(bytes: &Bytes) -> Option<u32> {
+    parse_bytes_as_uint(bytes)
+}
+
 /// Parse Bytes as a u64.
 fn parse_bytes_as_u64(bytes: &Bytes) -> Option<u64> {
-    if bytes.is_empty() {
-        return None;
-    }
-
-    let mut result: u64 = 0;
-    for i in 0..bytes.len() {
-        if let Some(b) = bytes.get(i) {
-            if b.is_ascii_digit() {
-                result = result * 10 + (b - b'0') as u64;
-            } else {
-                return None;
-            }
-        }
-    }
-    Some(result)
+    parse_bytes_as_uint(bytes)
 }
 
 #[cfg(test)]

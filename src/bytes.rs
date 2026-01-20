@@ -103,7 +103,7 @@ pub fn address_to_bytes(env: &Env, addr: &Address) -> Bytes {
 ///
 /// Symbols can contain up to 32 characters using a limited character set
 /// (alphanumeric and underscore). This function decodes short symbols
-/// (≤9 characters) which are encoded directly in the Val representation.
+/// (<=9 characters) which are encoded directly in the Val representation.
 ///
 /// # Example
 ///
@@ -116,16 +116,16 @@ pub fn address_to_bytes(env: &Env, addr: &Address) -> Bytes {
 ///
 /// # Note
 ///
-/// This function only works with short symbols (≤9 characters).
+/// This function only works with short symbols (<=9 characters).
 /// Long symbols will return empty Bytes.
 pub fn symbol_to_bytes(env: &Env, sym: &Symbol) -> Bytes {
-    // Short symbols (≤9 chars) are encoded in the Val using 6 bits per character.
+    // Short symbols (<=9 chars) are encoded in the Val using 6 bits per character.
     // The encoding uses a character set of 64 values:
     // '_' (0), '0'-'9' (1-10), 'A'-'Z' (11-36), 'a'-'z' (37-62)
     //
     // The raw Val for a small symbol has:
     // - Tag in lower 8 bits (14 for small symbol)
-    // - Body in upper 56 bits: up to 9 chars × 6 bits = 54 bits, plus length
+    // - Body in upper 56 bits: up to 9 chars x 6 bits = 54 bits, plus length
 
     let val: soroban_sdk::Val = sym.to_val();
     let raw = val.get_payload();
@@ -180,303 +180,319 @@ fn decode_symbol_char(code: u8) -> u8 {
     }
 }
 
-/// Convert a u32 to its decimal Bytes representation.
-///
-/// # Example
-///
-/// ```rust,ignore
-/// let bytes = u32_to_bytes(&env, 42);
-/// // bytes contains "42"
-/// ```
-pub fn u32_to_bytes(env: &Env, n: u32) -> Bytes {
-    if n == 0 {
-        return Bytes::from_slice(env, b"0");
-    }
+// =============================================================================
+// Numeric Conversion Macros
+// =============================================================================
 
-    let mut num = n;
-    let mut digits: [u8; 10] = [0; 10]; // u32 max is 4,294,967,295 (10 digits)
-    let mut i = 0;
+/// Internal macro: Convert unsigned integer to decimal Bytes
+macro_rules! impl_unsigned_to_bytes {
+    ($name:ident, $type:ty, $max_digits:expr, $doc:expr) => {
+        #[doc = $doc]
+        pub fn $name(env: &Env, n: $type) -> Bytes {
+            if n == 0 {
+                return Bytes::from_slice(env, b"0");
+            }
 
-    while num > 0 {
-        digits[i] = b'0' + (num % 10) as u8;
-        num /= 10;
-        i += 1;
-    }
+            let mut num = n;
+            let mut digits: [u8; $max_digits] = [0; $max_digits];
+            let mut i = 0;
 
-    let mut result = Bytes::new(env);
-    for j in (0..i).rev() {
-        result.push_back(digits[j]);
-    }
-    result
-}
+            while num > 0 {
+                digits[i] = b'0' + (num % 10) as u8;
+                num /= 10;
+                i += 1;
+            }
 
-/// Convert an i64 to its decimal Bytes representation.
-///
-/// Handles negative numbers by prepending a minus sign.
-///
-/// # Example
-///
-/// ```rust,ignore
-/// let bytes = i64_to_bytes(&env, -42);
-/// // bytes contains "-42"
-/// ```
-pub fn i64_to_bytes(env: &Env, n: i64) -> Bytes {
-    if n == 0 {
-        return Bytes::from_slice(env, b"0");
-    }
-
-    let negative = n < 0;
-    let mut num = if negative { -(n as i128) } else { n as i128 } as u64;
-    let mut digits: [u8; 20] = [0; 20]; // i64 max is 19 digits + sign
-    let mut i = 0;
-
-    while num > 0 {
-        digits[i] = b'0' + (num % 10) as u8;
-        num /= 10;
-        i += 1;
-    }
-
-    let mut result = Bytes::new(env);
-    if negative {
-        result.push_back(b'-');
-    }
-    for j in (0..i).rev() {
-        result.push_back(digits[j]);
-    }
-    result
-}
-
-/// Convert an i32 to its decimal Bytes representation.
-///
-/// Handles negative numbers by prepending a minus sign.
-///
-/// # Example
-///
-/// ```rust,ignore
-/// let bytes = i32_to_bytes(&env, -42);
-/// // bytes contains "-42"
-/// ```
-pub fn i32_to_bytes(env: &Env, n: i32) -> Bytes {
-    if n == 0 {
-        return Bytes::from_slice(env, b"0");
-    }
-
-    let negative = n < 0;
-    let mut num = if negative { -(n as i64) } else { n as i64 } as u32;
-    let mut digits: [u8; 11] = [0; 11]; // i32 max is 10 digits + sign
-    let mut i = 0;
-
-    while num > 0 {
-        digits[i] = b'0' + (num % 10) as u8;
-        num /= 10;
-        i += 1;
-    }
-
-    let mut result = Bytes::new(env);
-    if negative {
-        result.push_back(b'-');
-    }
-    for j in (0..i).rev() {
-        result.push_back(digits[j]);
-    }
-    result
-}
-
-/// Convert a u64 to its decimal Bytes representation.
-///
-/// # Example
-///
-/// ```rust,ignore
-/// let bytes = u64_to_bytes(&env, 42);
-/// // bytes contains "42"
-/// ```
-pub fn u64_to_bytes(env: &Env, n: u64) -> Bytes {
-    if n == 0 {
-        return Bytes::from_slice(env, b"0");
-    }
-
-    let mut num = n;
-    let mut digits: [u8; 20] = [0; 20]; // u64 max is 18,446,744,073,709,551,615 (20 digits)
-    let mut i = 0;
-
-    while num > 0 {
-        digits[i] = b'0' + (num % 10) as u8;
-        num /= 10;
-        i += 1;
-    }
-
-    let mut result = Bytes::new(env);
-    for j in (0..i).rev() {
-        result.push_back(digits[j]);
-    }
-    result
-}
-
-/// Parse decimal Bytes to a u32.
-///
-/// Returns `None` if the input is empty, contains non-digit characters,
-/// or the value would overflow u32.
-///
-/// # Example
-///
-/// ```rust,ignore
-/// let bytes = Bytes::from_slice(&env, b"42");
-/// assert_eq!(bytes_to_u32(&bytes), Some(42));
-/// ```
-pub fn bytes_to_u32(bytes: &Bytes) -> Option<u32> {
-    if bytes.is_empty() {
-        return None;
-    }
-
-    let mut result: u32 = 0;
-    for i in 0..bytes.len() {
-        let b = bytes.get(i)?;
-        if !b.is_ascii_digit() {
-            return None;
+            let mut result = Bytes::new(env);
+            for j in (0..i).rev() {
+                result.push_back(digits[j]);
+            }
+            result
         }
-        result = result.checked_mul(10)?;
-        result = result.checked_add((b - b'0') as u32)?;
-    }
-    Some(result)
+    };
 }
 
-/// Parse decimal Bytes to an i32.
-///
-/// Returns `None` if the input is empty, contains invalid characters,
-/// or the value would overflow i32. Handles optional leading minus sign.
-///
-/// # Example
-///
-/// ```rust,ignore
-/// let bytes = Bytes::from_slice(&env, b"-42");
-/// assert_eq!(bytes_to_i32(&bytes), Some(-42));
-/// ```
-pub fn bytes_to_i32(bytes: &Bytes) -> Option<i32> {
-    if bytes.is_empty() {
-        return None;
-    }
+/// Internal macro: Convert signed integer to decimal Bytes
+macro_rules! impl_signed_to_bytes {
+    ($name:ident, $type:ty, $unsigned:ty, $wider:ty, $max_digits:expr, $doc:expr) => {
+        #[doc = $doc]
+        pub fn $name(env: &Env, n: $type) -> Bytes {
+            if n == 0 {
+                return Bytes::from_slice(env, b"0");
+            }
 
-    let negative = bytes.get(0) == Some(b'-');
-    let start = if negative { 1 } else { 0 };
+            let negative = n < 0;
+            let mut num = if negative {
+                -(n as $wider)
+            } else {
+                n as $wider
+            } as $unsigned;
+            let mut digits: [u8; $max_digits] = [0; $max_digits];
+            let mut i = 0;
 
-    if start >= bytes.len() {
-        return None;
-    }
+            while num > 0 {
+                digits[i] = b'0' + (num % 10) as u8;
+                num /= 10;
+                i += 1;
+            }
 
-    let mut result: i32 = 0;
-    for i in start..bytes.len() {
-        let b = bytes.get(i)?;
-        if !b.is_ascii_digit() {
-            return None;
+            let mut result = Bytes::new(env);
+            if negative {
+                result.push_back(b'-');
+            }
+            for j in (0..i).rev() {
+                result.push_back(digits[j]);
+            }
+            result
         }
-        result = result.checked_mul(10)?;
-        result = result.checked_add((b - b'0') as i32)?;
-    }
+    };
+}
 
-    if negative {
-        Some(-result)
+/// Internal macro: Parse decimal Bytes to unsigned integer
+macro_rules! impl_bytes_to_unsigned {
+    ($name:ident, $type:ty, $doc:expr) => {
+        #[doc = $doc]
+        pub fn $name(bytes: &Bytes) -> Option<$type> {
+            if bytes.is_empty() {
+                return None;
+            }
+
+            let mut result: $type = 0;
+            for i in 0..bytes.len() {
+                let b = bytes.get(i)?;
+                if !b.is_ascii_digit() {
+                    return None;
+                }
+                result = result.checked_mul(10)?;
+                result = result.checked_add((b - b'0') as $type)?;
+            }
+            Some(result)
+        }
+    };
+}
+
+/// Internal macro: Parse decimal Bytes to signed integer
+macro_rules! impl_bytes_to_signed {
+    ($name:ident, $type:ty, $doc:expr) => {
+        #[doc = $doc]
+        pub fn $name(bytes: &Bytes) -> Option<$type> {
+            if bytes.is_empty() {
+                return None;
+            }
+
+            let negative = bytes.get(0) == Some(b'-');
+            let start = if negative { 1 } else { 0 };
+
+            if start >= bytes.len() {
+                return None;
+            }
+
+            let mut result: $type = 0;
+            for i in start..bytes.len() {
+                let b = bytes.get(i)?;
+                if !b.is_ascii_digit() {
+                    return None;
+                }
+                result = result.checked_mul(10)?;
+                result = result.checked_add((b - b'0') as $type)?;
+            }
+
+            if negative {
+                Some(-result)
+            } else {
+                Some(result)
+            }
+        }
+    };
+}
+
+/// Internal macro: Convert unsigned integer to hex Bytes
+macro_rules! impl_unsigned_to_hex {
+    ($name:ident, $type:ty, $max_digits:expr, $doc:expr) => {
+        #[doc = $doc]
+        pub fn $name(env: &Env, n: $type) -> Bytes {
+            if n == 0 {
+                return Bytes::from_slice(env, b"0x0");
+            }
+
+            let mut num = n;
+            let mut digits: [u8; $max_digits] = [0; $max_digits];
+            let mut i = 0;
+
+            while num > 0 {
+                digits[i] = HEX_CHARS[(num & 0xF) as usize];
+                num >>= 4;
+                i += 1;
+            }
+
+            let mut result = Bytes::from_slice(env, b"0x");
+            for j in (0..i).rev() {
+                result.push_back(digits[j]);
+            }
+            result
+        }
+    };
+}
+
+/// Internal macro: Convert signed integer to hex Bytes
+macro_rules! impl_signed_to_hex {
+    ($name:ident, $type:ty, $unsigned:ty, $wider:ty, $max_digits:expr, $doc:expr) => {
+        #[doc = $doc]
+        pub fn $name(env: &Env, n: $type) -> Bytes {
+            if n == 0 {
+                return Bytes::from_slice(env, b"0x0");
+            }
+
+            let negative = n < 0;
+            let mut num = if negative {
+                -(n as $wider)
+            } else {
+                n as $wider
+            } as $unsigned;
+            let mut digits: [u8; $max_digits] = [0; $max_digits];
+            let mut i = 0;
+
+            while num > 0 {
+                digits[i] = HEX_CHARS[(num & 0xF) as usize];
+                num >>= 4;
+                i += 1;
+            }
+
+            let mut result = if negative {
+                Bytes::from_slice(env, b"-0x")
+            } else {
+                Bytes::from_slice(env, b"0x")
+            };
+            for j in (0..i).rev() {
+                result.push_back(digits[j]);
+            }
+            result
+        }
+    };
+}
+
+/// Internal macro: Parse hex Bytes to unsigned integer
+macro_rules! impl_hex_to_unsigned {
+    ($name:ident, $type:ty, $doc:expr) => {
+        #[doc = $doc]
+        pub fn $name(bytes: &Bytes) -> Option<$type> {
+            let len = bytes.len();
+            if len == 0 {
+                return None;
+            }
+
+            let start = skip_hex_prefix(bytes, 0);
+            if start >= len {
+                return None;
+            }
+
+            let mut result: $type = 0;
+            for i in start..len {
+                let digit = parse_hex_digit(bytes.get(i)?)?;
+                result = result.checked_mul(16)?;
+                result = result.checked_add(digit as $type)?;
+            }
+            Some(result)
+        }
+    };
+}
+
+/// Internal macro: String convenience wrapper
+macro_rules! impl_string_to_numeric {
+    ($name:ident, $bytes_fn:ident, $type:ty, $doc:expr) => {
+        #[doc = $doc]
+        pub fn $name(env: &Env, s: &String) -> Option<$type> {
+            let bytes = string_to_bytes(env, s);
+            $bytes_fn(&bytes)
+        }
+    };
+}
+
+/// Internal macro: &str convenience wrapper
+macro_rules! impl_str_to_numeric {
+    ($name:ident, $bytes_fn:ident, $type:ty, $doc:expr) => {
+        #[doc = $doc]
+        pub fn $name(env: &Env, s: &str) -> Option<$type> {
+            let bytes = Bytes::from_slice(env, s.as_bytes());
+            $bytes_fn(&bytes)
+        }
+    };
+}
+
+// =============================================================================
+// Helper Functions for Hex Parsing
+// =============================================================================
+
+/// Skip "0x" or "0X" prefix if present, returning the start index
+fn skip_hex_prefix(bytes: &Bytes, offset: u32) -> u32 {
+    let len = bytes.len();
+    if len >= offset + 2
+        && bytes.get(offset) == Some(b'0')
+        && (bytes.get(offset + 1) == Some(b'x') || bytes.get(offset + 1) == Some(b'X'))
+    {
+        offset + 2
     } else {
-        Some(result)
+        offset
     }
 }
 
-/// Parse decimal Bytes to a u64.
-///
-/// Returns `None` if the input is empty, contains non-digit characters,
-/// or the value would overflow u64.
-///
-/// # Example
-///
-/// ```rust,ignore
-/// let bytes = Bytes::from_slice(&env, b"42");
-/// assert_eq!(bytes_to_u64(&bytes), Some(42));
-/// ```
-pub fn bytes_to_u64(bytes: &Bytes) -> Option<u64> {
-    if bytes.is_empty() {
-        return None;
-    }
-
-    let mut result: u64 = 0;
-    for i in 0..bytes.len() {
-        let b = bytes.get(i)?;
-        if !b.is_ascii_digit() {
-            return None;
-        }
-        result = result.checked_mul(10)?;
-        result = result.checked_add((b - b'0') as u64)?;
-    }
-    Some(result)
-}
-
-/// Parse decimal Bytes to an i64.
-///
-/// Returns `None` if the input is empty, contains invalid characters,
-/// or the value would overflow i64. Handles optional leading minus sign.
-///
-/// # Example
-///
-/// ```rust,ignore
-/// let bytes = Bytes::from_slice(&env, b"-42");
-/// assert_eq!(bytes_to_i64(&bytes), Some(-42));
-/// ```
-pub fn bytes_to_i64(bytes: &Bytes) -> Option<i64> {
-    if bytes.is_empty() {
-        return None;
-    }
-
-    let negative = bytes.get(0) == Some(b'-');
-    let start = if negative { 1 } else { 0 };
-
-    if start >= bytes.len() {
-        return None;
-    }
-
-    let mut result: i64 = 0;
-    for i in start..bytes.len() {
-        let b = bytes.get(i)?;
-        if !b.is_ascii_digit() {
-            return None;
-        }
-        result = result.checked_mul(10)?;
-        result = result.checked_add((b - b'0') as i64)?;
-    }
-
-    if negative {
-        Some(-result)
-    } else {
-        Some(result)
+/// Parse a single hex digit character to its numeric value
+fn parse_hex_digit(b: u8) -> Option<u8> {
+    match b {
+        b'0'..=b'9' => Some(b - b'0'),
+        b'a'..=b'f' => Some(b - b'a' + 10),
+        b'A'..=b'F' => Some(b - b'A' + 10),
+        _ => None,
     }
 }
 
-/// Convert a u128 to its decimal Bytes representation.
-///
-/// # Example
-///
-/// ```rust,ignore
-/// let bytes = u128_to_bytes(&env, 42);
-/// // bytes contains "42"
-/// ```
-pub fn u128_to_bytes(env: &Env, n: u128) -> Bytes {
-    if n == 0 {
-        return Bytes::from_slice(env, b"0");
-    }
+// =============================================================================
+// Hex Conversion Functions
+// =============================================================================
 
-    let mut num = n;
-    let mut digits: [u8; 39] = [0; 39]; // u128 max is 39 digits
-    let mut i = 0;
+/// Hex character lookup table
+const HEX_CHARS: &[u8] = b"0123456789abcdef";
 
-    while num > 0 {
-        digits[i] = b'0' + (num % 10) as u8;
-        num /= 10;
-        i += 1;
-    }
+// Generate unsigned decimal to bytes functions
+impl_unsigned_to_bytes!(
+    u32_to_bytes,
+    u32,
+    10,
+    "Convert a u32 to its decimal Bytes representation.\n\n# Example\n\n```rust,ignore\nlet bytes = u32_to_bytes(&env, 42);\n// bytes contains \"42\"\n```"
+);
 
-    let mut result = Bytes::new(env);
-    for j in (0..i).rev() {
-        result.push_back(digits[j]);
-    }
-    result
-}
+impl_unsigned_to_bytes!(
+    u64_to_bytes,
+    u64,
+    20,
+    "Convert a u64 to its decimal Bytes representation.\n\n# Example\n\n```rust,ignore\nlet bytes = u64_to_bytes(&env, 42);\n// bytes contains \"42\"\n```"
+);
+
+impl_unsigned_to_bytes!(
+    u128_to_bytes,
+    u128,
+    39,
+    "Convert a u128 to its decimal Bytes representation.\n\n# Example\n\n```rust,ignore\nlet bytes = u128_to_bytes(&env, 42);\n// bytes contains \"42\"\n```"
+);
+
+// Generate signed decimal to bytes functions
+impl_signed_to_bytes!(
+    i32_to_bytes,
+    i32,
+    u32,
+    i64,
+    11,
+    "Convert an i32 to its decimal Bytes representation.\n\nHandles negative numbers by prepending a minus sign.\n\n# Example\n\n```rust,ignore\nlet bytes = i32_to_bytes(&env, -42);\n// bytes contains \"-42\"\n```"
+);
+
+impl_signed_to_bytes!(
+    i64_to_bytes,
+    i64,
+    u64,
+    i128,
+    20,
+    "Convert an i64 to its decimal Bytes representation.\n\nHandles negative numbers by prepending a minus sign.\n\n# Example\n\n```rust,ignore\nlet bytes = i64_to_bytes(&env, -42);\n// bytes contains \"-42\"\n```"
+);
 
 /// Convert an i128 to its decimal Bytes representation.
 ///
@@ -496,8 +512,6 @@ pub fn i128_to_bytes(env: &Env, n: i128) -> Bytes {
     let negative = n < 0;
     // Handle i128::MIN specially since -i128::MIN would overflow
     let mut num = if n == i128::MIN {
-        // i128::MIN = -170141183460469231731687303715884105728
-        // We handle it by treating it as unsigned after negation would overflow
         (i128::MAX as u128) + 1
     } else if negative {
         (-n) as u128
@@ -524,33 +538,37 @@ pub fn i128_to_bytes(env: &Env, n: i128) -> Bytes {
     result
 }
 
-/// Parse decimal Bytes to a u128.
-///
-/// Returns `None` if the input is empty, contains non-digit characters,
-/// or the value would overflow u128.
-///
-/// # Example
-///
-/// ```rust,ignore
-/// let bytes = Bytes::from_slice(&env, b"42");
-/// assert_eq!(bytes_to_u128(&bytes), Some(42));
-/// ```
-pub fn bytes_to_u128(bytes: &Bytes) -> Option<u128> {
-    if bytes.is_empty() {
-        return None;
-    }
+// Generate bytes to unsigned parsing functions
+impl_bytes_to_unsigned!(
+    bytes_to_u32,
+    u32,
+    "Parse decimal Bytes to a u32.\n\nReturns `None` if the input is empty, contains non-digit characters,\nor the value would overflow u32.\n\n# Example\n\n```rust,ignore\nlet bytes = Bytes::from_slice(&env, b\"42\");\nassert_eq!(bytes_to_u32(&bytes), Some(42));\n```"
+);
 
-    let mut result: u128 = 0;
-    for i in 0..bytes.len() {
-        let b = bytes.get(i)?;
-        if !b.is_ascii_digit() {
-            return None;
-        }
-        result = result.checked_mul(10)?;
-        result = result.checked_add((b - b'0') as u128)?;
-    }
-    Some(result)
-}
+impl_bytes_to_unsigned!(
+    bytes_to_u64,
+    u64,
+    "Parse decimal Bytes to a u64.\n\nReturns `None` if the input is empty, contains non-digit characters,\nor the value would overflow u64.\n\n# Example\n\n```rust,ignore\nlet bytes = Bytes::from_slice(&env, b\"42\");\nassert_eq!(bytes_to_u64(&bytes), Some(42));\n```"
+);
+
+impl_bytes_to_unsigned!(
+    bytes_to_u128,
+    u128,
+    "Parse decimal Bytes to a u128.\n\nReturns `None` if the input is empty, contains non-digit characters,\nor the value would overflow u128.\n\n# Example\n\n```rust,ignore\nlet bytes = Bytes::from_slice(&env, b\"42\");\nassert_eq!(bytes_to_u128(&bytes), Some(42));\n```"
+);
+
+// Generate bytes to signed parsing functions
+impl_bytes_to_signed!(
+    bytes_to_i32,
+    i32,
+    "Parse decimal Bytes to an i32.\n\nReturns `None` if the input is empty, contains invalid characters,\nor the value would overflow i32. Handles optional leading minus sign.\n\n# Example\n\n```rust,ignore\nlet bytes = Bytes::from_slice(&env, b\"-42\");\nassert_eq!(bytes_to_i32(&bytes), Some(-42));\n```"
+);
+
+impl_bytes_to_signed!(
+    bytes_to_i64,
+    i64,
+    "Parse decimal Bytes to an i64.\n\nReturns `None` if the input is empty, contains invalid characters,\nor the value would overflow i64. Handles optional leading minus sign.\n\n# Example\n\n```rust,ignore\nlet bytes = Bytes::from_slice(&env, b\"-42\");\nassert_eq!(bytes_to_i64(&bytes), Some(-42));\n```"
+);
 
 /// Parse decimal Bytes to an i128.
 ///
@@ -603,176 +621,46 @@ pub fn bytes_to_i128(bytes: &Bytes) -> Option<i128> {
     }
 }
 
-// =============================================================================
-// Hex Conversion Functions
-// =============================================================================
+// Generate unsigned hex to bytes functions
+impl_unsigned_to_hex!(
+    u32_to_hex,
+    u32,
+    8,
+    "Convert a u32 to its hexadecimal Bytes representation with \"0x\" prefix.\n\n# Example\n\n```rust,ignore\nlet bytes = u32_to_hex(&env, 255);\n// bytes contains \"0xff\"\n```"
+);
 
-/// Hex character lookup table
-const HEX_CHARS: &[u8] = b"0123456789abcdef";
+impl_unsigned_to_hex!(
+    u64_to_hex,
+    u64,
+    16,
+    "Convert a u64 to its hexadecimal Bytes representation with \"0x\" prefix.\n\n# Example\n\n```rust,ignore\nlet bytes = u64_to_hex(&env, 255);\n// bytes contains \"0xff\"\n```"
+);
 
-/// Convert a u32 to its hexadecimal Bytes representation with "0x" prefix.
-///
-/// # Example
-///
-/// ```rust,ignore
-/// let bytes = u32_to_hex(&env, 255);
-/// // bytes contains "0xff"
-/// ```
-pub fn u32_to_hex(env: &Env, n: u32) -> Bytes {
-    if n == 0 {
-        return Bytes::from_slice(env, b"0x0");
-    }
+impl_unsigned_to_hex!(
+    u128_to_hex,
+    u128,
+    32,
+    "Convert a u128 to its hexadecimal Bytes representation with \"0x\" prefix.\n\n# Example\n\n```rust,ignore\nlet bytes = u128_to_hex(&env, 255);\n// bytes contains \"0xff\"\n```"
+);
 
-    let mut num = n;
-    let mut digits: [u8; 8] = [0; 8]; // u32 max is 8 hex digits
-    let mut i = 0;
+// Generate signed hex to bytes functions
+impl_signed_to_hex!(
+    i32_to_hex,
+    i32,
+    u32,
+    i64,
+    8,
+    "Convert an i32 to its hexadecimal Bytes representation with \"0x\" prefix.\n\nNegative numbers are prefixed with \"-0x\".\n\n# Example\n\n```rust,ignore\nlet bytes = i32_to_hex(&env, -255);\n// bytes contains \"-0xff\"\n```"
+);
 
-    while num > 0 {
-        digits[i] = HEX_CHARS[(num & 0xF) as usize];
-        num >>= 4;
-        i += 1;
-    }
-
-    let mut result = Bytes::from_slice(env, b"0x");
-    for j in (0..i).rev() {
-        result.push_back(digits[j]);
-    }
-    result
-}
-
-/// Convert an i32 to its hexadecimal Bytes representation with "0x" prefix.
-///
-/// Negative numbers are prefixed with "-0x".
-///
-/// # Example
-///
-/// ```rust,ignore
-/// let bytes = i32_to_hex(&env, -255);
-/// // bytes contains "-0xff"
-/// ```
-pub fn i32_to_hex(env: &Env, n: i32) -> Bytes {
-    if n == 0 {
-        return Bytes::from_slice(env, b"0x0");
-    }
-
-    let negative = n < 0;
-    let mut num = if negative { -(n as i64) } else { n as i64 } as u32;
-    let mut digits: [u8; 8] = [0; 8];
-    let mut i = 0;
-
-    while num > 0 {
-        digits[i] = HEX_CHARS[(num & 0xF) as usize];
-        num >>= 4;
-        i += 1;
-    }
-
-    let mut result = if negative {
-        Bytes::from_slice(env, b"-0x")
-    } else {
-        Bytes::from_slice(env, b"0x")
-    };
-    for j in (0..i).rev() {
-        result.push_back(digits[j]);
-    }
-    result
-}
-
-/// Convert a u64 to its hexadecimal Bytes representation with "0x" prefix.
-///
-/// # Example
-///
-/// ```rust,ignore
-/// let bytes = u64_to_hex(&env, 255);
-/// // bytes contains "0xff"
-/// ```
-pub fn u64_to_hex(env: &Env, n: u64) -> Bytes {
-    if n == 0 {
-        return Bytes::from_slice(env, b"0x0");
-    }
-
-    let mut num = n;
-    let mut digits: [u8; 16] = [0; 16]; // u64 max is 16 hex digits
-    let mut i = 0;
-
-    while num > 0 {
-        digits[i] = HEX_CHARS[(num & 0xF) as usize];
-        num >>= 4;
-        i += 1;
-    }
-
-    let mut result = Bytes::from_slice(env, b"0x");
-    for j in (0..i).rev() {
-        result.push_back(digits[j]);
-    }
-    result
-}
-
-/// Convert an i64 to its hexadecimal Bytes representation with "0x" prefix.
-///
-/// Negative numbers are prefixed with "-0x".
-///
-/// # Example
-///
-/// ```rust,ignore
-/// let bytes = i64_to_hex(&env, -255);
-/// // bytes contains "-0xff"
-/// ```
-pub fn i64_to_hex(env: &Env, n: i64) -> Bytes {
-    if n == 0 {
-        return Bytes::from_slice(env, b"0x0");
-    }
-
-    let negative = n < 0;
-    let mut num = if negative { -(n as i128) } else { n as i128 } as u64;
-    let mut digits: [u8; 16] = [0; 16];
-    let mut i = 0;
-
-    while num > 0 {
-        digits[i] = HEX_CHARS[(num & 0xF) as usize];
-        num >>= 4;
-        i += 1;
-    }
-
-    let mut result = if negative {
-        Bytes::from_slice(env, b"-0x")
-    } else {
-        Bytes::from_slice(env, b"0x")
-    };
-    for j in (0..i).rev() {
-        result.push_back(digits[j]);
-    }
-    result
-}
-
-/// Convert a u128 to its hexadecimal Bytes representation with "0x" prefix.
-///
-/// # Example
-///
-/// ```rust,ignore
-/// let bytes = u128_to_hex(&env, 255);
-/// // bytes contains "0xff"
-/// ```
-pub fn u128_to_hex(env: &Env, n: u128) -> Bytes {
-    if n == 0 {
-        return Bytes::from_slice(env, b"0x0");
-    }
-
-    let mut num = n;
-    let mut digits: [u8; 32] = [0; 32]; // u128 max is 32 hex digits
-    let mut i = 0;
-
-    while num > 0 {
-        digits[i] = HEX_CHARS[(num & 0xF) as usize];
-        num >>= 4;
-        i += 1;
-    }
-
-    let mut result = Bytes::from_slice(env, b"0x");
-    for j in (0..i).rev() {
-        result.push_back(digits[j]);
-    }
-    result
-}
+impl_signed_to_hex!(
+    i64_to_hex,
+    i64,
+    u64,
+    i128,
+    16,
+    "Convert an i64 to its hexadecimal Bytes representation with \"0x\" prefix.\n\nNegative numbers are prefixed with \"-0x\".\n\n# Example\n\n```rust,ignore\nlet bytes = i64_to_hex(&env, -255);\n// bytes contains \"-0xff\"\n```"
+);
 
 /// Convert an i128 to its hexadecimal Bytes representation with "0x" prefix.
 ///
@@ -819,51 +707,24 @@ pub fn i128_to_hex(env: &Env, n: i128) -> Bytes {
     result
 }
 
-/// Parse hex Bytes to a u32.
-///
-/// Accepts optional "0x" or "0X" prefix. Case-insensitive.
-/// Returns `None` if the input is empty, contains invalid characters,
-/// or the value would overflow u32.
-///
-/// # Example
-///
-/// ```rust,ignore
-/// let bytes = Bytes::from_slice(&env, b"0xff");
-/// assert_eq!(hex_to_u32(&bytes), Some(255));
-/// ```
-pub fn hex_to_u32(bytes: &Bytes) -> Option<u32> {
-    let len = bytes.len();
-    if len == 0 {
-        return None;
-    }
+// Generate hex to unsigned parsing functions
+impl_hex_to_unsigned!(
+    hex_to_u32,
+    u32,
+    "Parse hex Bytes to a u32.\n\nAccepts optional \"0x\" or \"0X\" prefix. Case-insensitive.\nReturns `None` if the input is empty, contains invalid characters,\nor the value would overflow u32.\n\n# Example\n\n```rust,ignore\nlet bytes = Bytes::from_slice(&env, b\"0xff\");\nassert_eq!(hex_to_u32(&bytes), Some(255));\n```"
+);
 
-    let start = if len >= 2
-        && bytes.get(0) == Some(b'0')
-        && (bytes.get(1) == Some(b'x') || bytes.get(1) == Some(b'X'))
-    {
-        2
-    } else {
-        0
-    };
+impl_hex_to_unsigned!(
+    hex_to_u64,
+    u64,
+    "Parse hex Bytes to a u64.\n\nAccepts optional \"0x\" or \"0X\" prefix. Case-insensitive.\nReturns `None` if the input is empty, contains invalid characters,\nor the value would overflow u64.\n\n# Example\n\n```rust,ignore\nlet bytes = Bytes::from_slice(&env, b\"0xff\");\nassert_eq!(hex_to_u64(&bytes), Some(255));\n```"
+);
 
-    if start >= len {
-        return None;
-    }
-
-    let mut result: u32 = 0;
-    for i in start..len {
-        let b = bytes.get(i)?;
-        let digit = match b {
-            b'0'..=b'9' => b - b'0',
-            b'a'..=b'f' => b - b'a' + 10,
-            b'A'..=b'F' => b - b'A' + 10,
-            _ => return None,
-        };
-        result = result.checked_mul(16)?;
-        result = result.checked_add(digit as u32)?;
-    }
-    Some(result)
-}
+impl_hex_to_unsigned!(
+    hex_to_u128,
+    u128,
+    "Parse hex Bytes to a u128.\n\nAccepts optional \"0x\" or \"0X\" prefix. Case-insensitive.\nReturns `None` if the input is empty, contains invalid characters,\nor the value would overflow u128.\n\n# Example\n\n```rust,ignore\nlet bytes = Bytes::from_slice(&env, b\"0xff\");\nassert_eq!(hex_to_u128(&bytes), Some(255));\n```"
+);
 
 /// Parse hex Bytes to an i32.
 ///
@@ -889,28 +750,14 @@ pub fn hex_to_i32(bytes: &Bytes) -> Option<i32> {
         return None;
     }
 
-    let start = if len >= after_sign + 2
-        && bytes.get(after_sign) == Some(b'0')
-        && (bytes.get(after_sign + 1) == Some(b'x') || bytes.get(after_sign + 1) == Some(b'X'))
-    {
-        after_sign + 2
-    } else {
-        after_sign
-    };
-
+    let start = skip_hex_prefix(bytes, after_sign);
     if start >= len {
         return None;
     }
 
     let mut result: u32 = 0;
     for i in start..len {
-        let b = bytes.get(i)?;
-        let digit = match b {
-            b'0'..=b'9' => b - b'0',
-            b'a'..=b'f' => b - b'a' + 10,
-            b'A'..=b'F' => b - b'A' + 10,
-            _ => return None,
-        };
+        let digit = parse_hex_digit(bytes.get(i)?)?;
         result = result.checked_mul(16)?;
         result = result.checked_add(digit as u32)?;
     }
@@ -929,52 +776,6 @@ pub fn hex_to_i32(bytes: &Bytes) -> Option<i32> {
         }
         Some(result as i32)
     }
-}
-
-/// Parse hex Bytes to a u64.
-///
-/// Accepts optional "0x" or "0X" prefix. Case-insensitive.
-/// Returns `None` if the input is empty, contains invalid characters,
-/// or the value would overflow u64.
-///
-/// # Example
-///
-/// ```rust,ignore
-/// let bytes = Bytes::from_slice(&env, b"0xff");
-/// assert_eq!(hex_to_u64(&bytes), Some(255));
-/// ```
-pub fn hex_to_u64(bytes: &Bytes) -> Option<u64> {
-    let len = bytes.len();
-    if len == 0 {
-        return None;
-    }
-
-    let start = if len >= 2
-        && bytes.get(0) == Some(b'0')
-        && (bytes.get(1) == Some(b'x') || bytes.get(1) == Some(b'X'))
-    {
-        2
-    } else {
-        0
-    };
-
-    if start >= len {
-        return None;
-    }
-
-    let mut result: u64 = 0;
-    for i in start..len {
-        let b = bytes.get(i)?;
-        let digit = match b {
-            b'0'..=b'9' => b - b'0',
-            b'a'..=b'f' => b - b'a' + 10,
-            b'A'..=b'F' => b - b'A' + 10,
-            _ => return None,
-        };
-        result = result.checked_mul(16)?;
-        result = result.checked_add(digit as u64)?;
-    }
-    Some(result)
 }
 
 /// Parse hex Bytes to an i64.
@@ -1001,28 +802,14 @@ pub fn hex_to_i64(bytes: &Bytes) -> Option<i64> {
         return None;
     }
 
-    let start = if len >= after_sign + 2
-        && bytes.get(after_sign) == Some(b'0')
-        && (bytes.get(after_sign + 1) == Some(b'x') || bytes.get(after_sign + 1) == Some(b'X'))
-    {
-        after_sign + 2
-    } else {
-        after_sign
-    };
-
+    let start = skip_hex_prefix(bytes, after_sign);
     if start >= len {
         return None;
     }
 
     let mut result: u64 = 0;
     for i in start..len {
-        let b = bytes.get(i)?;
-        let digit = match b {
-            b'0'..=b'9' => b - b'0',
-            b'a'..=b'f' => b - b'a' + 10,
-            b'A'..=b'F' => b - b'A' + 10,
-            _ => return None,
-        };
+        let digit = parse_hex_digit(bytes.get(i)?)?;
         result = result.checked_mul(16)?;
         result = result.checked_add(digit as u64)?;
     }
@@ -1041,52 +828,6 @@ pub fn hex_to_i64(bytes: &Bytes) -> Option<i64> {
         }
         Some(result as i64)
     }
-}
-
-/// Parse hex Bytes to a u128.
-///
-/// Accepts optional "0x" or "0X" prefix. Case-insensitive.
-/// Returns `None` if the input is empty, contains invalid characters,
-/// or the value would overflow u128.
-///
-/// # Example
-///
-/// ```rust,ignore
-/// let bytes = Bytes::from_slice(&env, b"0xff");
-/// assert_eq!(hex_to_u128(&bytes), Some(255));
-/// ```
-pub fn hex_to_u128(bytes: &Bytes) -> Option<u128> {
-    let len = bytes.len();
-    if len == 0 {
-        return None;
-    }
-
-    let start = if len >= 2
-        && bytes.get(0) == Some(b'0')
-        && (bytes.get(1) == Some(b'x') || bytes.get(1) == Some(b'X'))
-    {
-        2
-    } else {
-        0
-    };
-
-    if start >= len {
-        return None;
-    }
-
-    let mut result: u128 = 0;
-    for i in start..len {
-        let b = bytes.get(i)?;
-        let digit = match b {
-            b'0'..=b'9' => b - b'0',
-            b'a'..=b'f' => b - b'a' + 10,
-            b'A'..=b'F' => b - b'A' + 10,
-            _ => return None,
-        };
-        result = result.checked_mul(16)?;
-        result = result.checked_add(digit as u128)?;
-    }
-    Some(result)
 }
 
 /// Parse hex Bytes to an i128.
@@ -1113,28 +854,14 @@ pub fn hex_to_i128(bytes: &Bytes) -> Option<i128> {
         return None;
     }
 
-    let start = if len >= after_sign + 2
-        && bytes.get(after_sign) == Some(b'0')
-        && (bytes.get(after_sign + 1) == Some(b'x') || bytes.get(after_sign + 1) == Some(b'X'))
-    {
-        after_sign + 2
-    } else {
-        after_sign
-    };
-
+    let start = skip_hex_prefix(bytes, after_sign);
     if start >= len {
         return None;
     }
 
     let mut result: u128 = 0;
     for i in start..len {
-        let b = bytes.get(i)?;
-        let digit = match b {
-            b'0'..=b'9' => b - b'0',
-            b'a'..=b'f' => b - b'a' + 10,
-            b'A'..=b'F' => b - b'A' + 10,
-            _ => return None,
-        };
+        let digit = parse_hex_digit(bytes.get(i)?)?;
         result = result.checked_mul(16)?;
         result = result.checked_add(digit as u128)?;
     }
@@ -1174,21 +901,11 @@ pub fn hex_to_i128(bytes: &Bytes) -> Option<i128> {
 pub fn u256_to_bytes(env: &Env, n: &U256) -> Bytes {
     let be_bytes = n.to_be_bytes();
 
-    let mut all_zero = true;
-    for i in 0..32u32 {
-        if be_bytes.get(i) != Some(0) {
-            all_zero = false;
-            break;
-        }
-    }
-    if all_zero {
+    if is_zero_256_bytes(&be_bytes) {
         return Bytes::from_slice(env, b"0");
     }
 
-    let mut num = [0u8; 32];
-    for (i, item) in num.iter_mut().enumerate() {
-        *item = be_bytes.get(i as u32).unwrap_or(0);
-    }
+    let mut num = bytes_to_array_256(&be_bytes);
 
     // U256 max is ~78 decimal digits
     let mut digits = [0u8; 78];
@@ -1205,6 +922,25 @@ pub fn u256_to_bytes(env: &Env, n: &U256) -> Bytes {
         result.push_back(digits[i]);
     }
     result
+}
+
+/// Helper: check if a 256-bit Bytes is zero
+fn is_zero_256_bytes(bytes: &Bytes) -> bool {
+    for i in 0..32u32 {
+        if bytes.get(i) != Some(0) {
+            return false;
+        }
+    }
+    true
+}
+
+/// Helper: convert Bytes to 32-byte array
+fn bytes_to_array_256(bytes: &Bytes) -> [u8; 32] {
+    let mut num = [0u8; 32];
+    for (i, item) in num.iter_mut().enumerate() {
+        *item = bytes.get(i as u32).unwrap_or(0);
+    }
+    num
 }
 
 /// Helper: check if a 256-bit big-endian number is zero
@@ -1251,12 +987,7 @@ pub fn i256_to_bytes(env: &Env, n: &I256) -> Bytes {
         for (i, item) in abs_num.iter_mut().enumerate() {
             *item = !be_bytes.get(i as u32).unwrap_or(0);
         }
-        let mut carry = 1u16;
-        for i in (0..32).rev() {
-            let sum = (abs_num[i] as u16) + carry;
-            abs_num[i] = sum as u8;
-            carry = sum >> 8;
-        }
+        twos_complement_add_one(&mut abs_num);
 
         if is_zero_256(&abs_num) {
             return Bytes::from_slice(env, b"0");
@@ -1277,10 +1008,7 @@ pub fn i256_to_bytes(env: &Env, n: &I256) -> Bytes {
         }
         result
     } else {
-        let mut num = [0u8; 32];
-        for (i, item) in num.iter_mut().enumerate() {
-            *item = be_bytes.get(i as u32).unwrap_or(0);
-        }
+        let mut num = bytes_to_array_256(&be_bytes);
 
         if is_zero_256(&num) {
             return Bytes::from_slice(env, b"0");
@@ -1303,6 +1031,16 @@ pub fn i256_to_bytes(env: &Env, n: &I256) -> Bytes {
     }
 }
 
+/// Helper: add 1 for two's complement negation
+fn twos_complement_add_one(num: &mut [u8; 32]) {
+    let mut carry = 1u16;
+    for i in (0..32).rev() {
+        let sum = (num[i] as u16) + carry;
+        num[i] = sum as u8;
+        carry = sum >> 8;
+    }
+}
+
 /// Convert a U256 to its hexadecimal Bytes representation with "0x" prefix.
 ///
 /// # Example
@@ -1315,14 +1053,7 @@ pub fn i256_to_bytes(env: &Env, n: &I256) -> Bytes {
 pub fn u256_to_hex(env: &Env, n: &U256) -> Bytes {
     let be_bytes = n.to_be_bytes();
 
-    let mut all_zero = true;
-    for i in 0..32u32 {
-        if be_bytes.get(i) != Some(0) {
-            all_zero = false;
-            break;
-        }
-    }
-    if all_zero {
+    if is_zero_256_bytes(&be_bytes) {
         return Bytes::from_slice(env, b"0x0");
     }
 
@@ -1371,21 +1102,9 @@ pub fn i256_to_hex(env: &Env, n: &I256) -> Bytes {
         for (i, item) in abs_num.iter_mut().enumerate() {
             *item = !be_bytes.get(i as u32).unwrap_or(0);
         }
-        let mut carry = 1u16;
-        for i in (0..32).rev() {
-            let sum = (abs_num[i] as u16) + carry;
-            abs_num[i] = sum as u8;
-            carry = sum >> 8;
-        }
+        twos_complement_add_one(&mut abs_num);
 
-        let mut all_zero = true;
-        for &b in abs_num.iter() {
-            if b != 0 {
-                all_zero = false;
-                break;
-            }
-        }
-        if all_zero {
+        if is_zero_256(&abs_num) {
             return Bytes::from_slice(env, b"0x0");
         }
 
@@ -1410,14 +1129,7 @@ pub fn i256_to_hex(env: &Env, n: &I256) -> Bytes {
 
         result
     } else {
-        let mut all_zero = true;
-        for i in 0..32u32 {
-            if be_bytes.get(i) != Some(0) {
-                all_zero = false;
-                break;
-            }
-        }
-        if all_zero {
+        if is_zero_256_bytes(&be_bytes) {
             return Bytes::from_slice(env, b"0x0");
         }
 
@@ -1555,19 +1267,19 @@ pub fn bytes_to_i256(env: &Env, bytes: &Bytes) -> Option<I256> {
         }
 
         // Two's complement negation
-        for item in num.iter_mut() {
-            *item = !*item;
-        }
-        let mut carry = 1u16;
-        for i in (0..32).rev() {
-            let sum = (num[i] as u16) + carry;
-            num[i] = sum as u8;
-            carry = sum >> 8;
-        }
+        twos_complement_negate(&mut num);
     }
 
     let num_bytes = Bytes::from_slice(env, &num);
     Some(I256::from_be_bytes(env, &num_bytes))
+}
+
+/// Helper: two's complement negation (invert and add 1)
+fn twos_complement_negate(num: &mut [u8; 32]) {
+    for item in num.iter_mut() {
+        *item = !*item;
+    }
+    twos_complement_add_one(num);
 }
 
 /// Parse hex Bytes to a U256.
@@ -1588,15 +1300,7 @@ pub fn hex_to_u256(env: &Env, bytes: &Bytes) -> Option<U256> {
         return None;
     }
 
-    let start = if len >= 2
-        && bytes.get(0) == Some(b'0')
-        && (bytes.get(1) == Some(b'x') || bytes.get(1) == Some(b'X'))
-    {
-        2
-    } else {
-        0
-    };
-
+    let start = skip_hex_prefix(bytes, 0);
     if start >= len {
         return None;
     }
@@ -1609,13 +1313,7 @@ pub fn hex_to_u256(env: &Env, bytes: &Bytes) -> Option<U256> {
     let mut num = [0u8; 32];
 
     for i in start..len {
-        let b = bytes.get(i)?;
-        let digit = match b {
-            b'0'..=b'9' => b - b'0',
-            b'a'..=b'f' => b - b'a' + 10,
-            b'A'..=b'F' => b - b'A' + 10,
-            _ => return None,
-        };
+        let digit = parse_hex_digit(bytes.get(i)?)?;
 
         // Shift left 4 bits and add digit
         let mut carry = digit;
@@ -1658,15 +1356,7 @@ pub fn hex_to_i256(env: &Env, bytes: &Bytes) -> Option<I256> {
         return None;
     }
 
-    let start = if len >= after_sign + 2
-        && bytes.get(after_sign) == Some(b'0')
-        && (bytes.get(after_sign + 1) == Some(b'x') || bytes.get(after_sign + 1) == Some(b'X'))
-    {
-        after_sign + 2
-    } else {
-        after_sign
-    };
-
+    let start = skip_hex_prefix(bytes, after_sign);
     if start >= len {
         return None;
     }
@@ -1679,13 +1369,7 @@ pub fn hex_to_i256(env: &Env, bytes: &Bytes) -> Option<I256> {
     let mut num = [0u8; 32];
 
     for i in start..len {
-        let b = bytes.get(i)?;
-        let digit = match b {
-            b'0'..=b'9' => b - b'0',
-            b'a'..=b'f' => b - b'a' + 10,
-            b'A'..=b'F' => b - b'A' + 10,
-            _ => return None,
-        };
+        let digit = parse_hex_digit(bytes.get(i)?)?;
 
         // Shift left 4 bits and add digit
         let mut carry = digit;
@@ -1724,15 +1408,7 @@ pub fn hex_to_i256(env: &Env, bytes: &Bytes) -> Option<I256> {
         }
 
         // Two's complement negation
-        for item in num.iter_mut() {
-            *item = !*item;
-        }
-        let mut carry = 1u16;
-        for i in (0..32).rev() {
-            let sum = (num[i] as u16) + carry;
-            num[i] = sum as u8;
-            carry = sum >> 8;
-        }
+        twos_complement_negate(&mut num);
     }
 
     let num_bytes = Bytes::from_slice(env, &num);
@@ -1743,95 +1419,47 @@ pub fn hex_to_i256(env: &Env, bytes: &Bytes) -> Option<I256> {
 // String Convenience Wrappers
 // =============================================================================
 
-/// Parse a soroban_sdk::String to a u32.
-///
-/// This is a convenience wrapper around `string_to_bytes` and `bytes_to_u32`.
-///
-/// # Example
-///
-/// ```rust,ignore
-/// let s = String::from_str(&env, "12345");
-/// assert_eq!(string_to_u32(&env, &s), Some(12345));
-/// ```
-pub fn string_to_u32(env: &Env, s: &String) -> Option<u32> {
-    let bytes = string_to_bytes(env, s);
-    bytes_to_u32(&bytes)
-}
+impl_string_to_numeric!(
+    string_to_u32,
+    bytes_to_u32,
+    u32,
+    "Parse a soroban_sdk::String to a u32.\n\nThis is a convenience wrapper around `string_to_bytes` and `bytes_to_u32`.\n\n# Example\n\n```rust,ignore\nlet s = String::from_str(&env, \"12345\");\nassert_eq!(string_to_u32(&env, &s), Some(12345));\n```"
+);
 
-/// Parse a soroban_sdk::String to an i32.
-///
-/// This is a convenience wrapper around `string_to_bytes` and `bytes_to_i32`.
-///
-/// # Example
-///
-/// ```rust,ignore
-/// let s = String::from_str(&env, "-12345");
-/// assert_eq!(string_to_i32(&env, &s), Some(-12345));
-/// ```
-pub fn string_to_i32(env: &Env, s: &String) -> Option<i32> {
-    let bytes = string_to_bytes(env, s);
-    bytes_to_i32(&bytes)
-}
+impl_string_to_numeric!(
+    string_to_i32,
+    bytes_to_i32,
+    i32,
+    "Parse a soroban_sdk::String to an i32.\n\nThis is a convenience wrapper around `string_to_bytes` and `bytes_to_i32`.\n\n# Example\n\n```rust,ignore\nlet s = String::from_str(&env, \"-12345\");\nassert_eq!(string_to_i32(&env, &s), Some(-12345));\n```"
+);
 
-/// Parse a soroban_sdk::String to a u64.
-///
-/// This is a convenience wrapper around `string_to_bytes` and `bytes_to_u64`.
-///
-/// # Example
-///
-/// ```rust,ignore
-/// let s = String::from_str(&env, "12345");
-/// assert_eq!(string_to_u64(&env, &s), Some(12345));
-/// ```
-pub fn string_to_u64(env: &Env, s: &String) -> Option<u64> {
-    let bytes = string_to_bytes(env, s);
-    bytes_to_u64(&bytes)
-}
+impl_string_to_numeric!(
+    string_to_u64,
+    bytes_to_u64,
+    u64,
+    "Parse a soroban_sdk::String to a u64.\n\nThis is a convenience wrapper around `string_to_bytes` and `bytes_to_u64`.\n\n# Example\n\n```rust,ignore\nlet s = String::from_str(&env, \"12345\");\nassert_eq!(string_to_u64(&env, &s), Some(12345));\n```"
+);
 
-/// Parse a soroban_sdk::String to an i64.
-///
-/// This is a convenience wrapper around `string_to_bytes` and `bytes_to_i64`.
-///
-/// # Example
-///
-/// ```rust,ignore
-/// let s = String::from_str(&env, "-12345");
-/// assert_eq!(string_to_i64(&env, &s), Some(-12345));
-/// ```
-pub fn string_to_i64(env: &Env, s: &String) -> Option<i64> {
-    let bytes = string_to_bytes(env, s);
-    bytes_to_i64(&bytes)
-}
+impl_string_to_numeric!(
+    string_to_i64,
+    bytes_to_i64,
+    i64,
+    "Parse a soroban_sdk::String to an i64.\n\nThis is a convenience wrapper around `string_to_bytes` and `bytes_to_i64`.\n\n# Example\n\n```rust,ignore\nlet s = String::from_str(&env, \"-12345\");\nassert_eq!(string_to_i64(&env, &s), Some(-12345));\n```"
+);
 
-/// Parse a soroban_sdk::String to a u128.
-///
-/// This is a convenience wrapper around `string_to_bytes` and `bytes_to_u128`.
-///
-/// # Example
-///
-/// ```rust,ignore
-/// let s = String::from_str(&env, "12345");
-/// assert_eq!(string_to_u128(&env, &s), Some(12345));
-/// ```
-pub fn string_to_u128(env: &Env, s: &String) -> Option<u128> {
-    let bytes = string_to_bytes(env, s);
-    bytes_to_u128(&bytes)
-}
+impl_string_to_numeric!(
+    string_to_u128,
+    bytes_to_u128,
+    u128,
+    "Parse a soroban_sdk::String to a u128.\n\nThis is a convenience wrapper around `string_to_bytes` and `bytes_to_u128`.\n\n# Example\n\n```rust,ignore\nlet s = String::from_str(&env, \"12345\");\nassert_eq!(string_to_u128(&env, &s), Some(12345));\n```"
+);
 
-/// Parse a soroban_sdk::String to an i128.
-///
-/// This is a convenience wrapper around `string_to_bytes` and `bytes_to_i128`.
-///
-/// # Example
-///
-/// ```rust,ignore
-/// let s = String::from_str(&env, "-12345");
-/// assert_eq!(string_to_i128(&env, &s), Some(-12345));
-/// ```
-pub fn string_to_i128(env: &Env, s: &String) -> Option<i128> {
-    let bytes = string_to_bytes(env, s);
-    bytes_to_i128(&bytes)
-}
+impl_string_to_numeric!(
+    string_to_i128,
+    bytes_to_i128,
+    i128,
+    "Parse a soroban_sdk::String to an i128.\n\nThis is a convenience wrapper around `string_to_bytes` and `bytes_to_i128`.\n\n# Example\n\n```rust,ignore\nlet s = String::from_str(&env, \"-12345\");\nassert_eq!(string_to_i128(&env, &s), Some(-12345));\n```"
+);
 
 /// Parse a soroban_sdk::String to a U256.
 ///
@@ -1867,99 +1495,47 @@ pub fn string_to_i256(env: &Env, s: &String) -> Option<I256> {
 // &str Convenience Wrappers
 // =============================================================================
 
-/// Parse a &str to a u32.
-///
-/// Converts the string slice directly to Bytes and parses.
-/// More ergonomic than `string_to_u32` when working with string literals.
-///
-/// # Example
-///
-/// ```rust,ignore
-/// let n = str_to_u32(&env, "12345");
-/// // n is Some(12345)
-/// ```
-pub fn str_to_u32(env: &Env, s: &str) -> Option<u32> {
-    let bytes = Bytes::from_slice(env, s.as_bytes());
-    bytes_to_u32(&bytes)
-}
+impl_str_to_numeric!(
+    str_to_u32,
+    bytes_to_u32,
+    u32,
+    "Parse a &str to a u32.\n\nConverts the string slice directly to Bytes and parses.\nMore ergonomic than `string_to_u32` when working with string literals.\n\n# Example\n\n```rust,ignore\nlet n = str_to_u32(&env, \"12345\");\n// n is Some(12345)\n```"
+);
 
-/// Parse a &str to an i32.
-///
-/// Converts the string slice directly to Bytes and parses.
-/// Handles optional leading minus sign.
-///
-/// # Example
-///
-/// ```rust,ignore
-/// let n = str_to_i32(&env, "-12345");
-/// // n is Some(-12345)
-/// ```
-pub fn str_to_i32(env: &Env, s: &str) -> Option<i32> {
-    let bytes = Bytes::from_slice(env, s.as_bytes());
-    bytes_to_i32(&bytes)
-}
+impl_str_to_numeric!(
+    str_to_i32,
+    bytes_to_i32,
+    i32,
+    "Parse a &str to an i32.\n\nConverts the string slice directly to Bytes and parses.\nHandles optional leading minus sign.\n\n# Example\n\n```rust,ignore\nlet n = str_to_i32(&env, \"-12345\");\n// n is Some(-12345)\n```"
+);
 
-/// Parse a &str to a u64.
-///
-/// Converts the string slice directly to Bytes and parses.
-///
-/// # Example
-///
-/// ```rust,ignore
-/// let n = str_to_u64(&env, "12345");
-/// // n is Some(12345)
-/// ```
-pub fn str_to_u64(env: &Env, s: &str) -> Option<u64> {
-    let bytes = Bytes::from_slice(env, s.as_bytes());
-    bytes_to_u64(&bytes)
-}
+impl_str_to_numeric!(
+    str_to_u64,
+    bytes_to_u64,
+    u64,
+    "Parse a &str to a u64.\n\nConverts the string slice directly to Bytes and parses.\n\n# Example\n\n```rust,ignore\nlet n = str_to_u64(&env, \"12345\");\n// n is Some(12345)\n```"
+);
 
-/// Parse a &str to an i64.
-///
-/// Converts the string slice directly to Bytes and parses.
-/// Handles optional leading minus sign.
-///
-/// # Example
-///
-/// ```rust,ignore
-/// let n = str_to_i64(&env, "-12345");
-/// // n is Some(-12345)
-/// ```
-pub fn str_to_i64(env: &Env, s: &str) -> Option<i64> {
-    let bytes = Bytes::from_slice(env, s.as_bytes());
-    bytes_to_i64(&bytes)
-}
+impl_str_to_numeric!(
+    str_to_i64,
+    bytes_to_i64,
+    i64,
+    "Parse a &str to an i64.\n\nConverts the string slice directly to Bytes and parses.\nHandles optional leading minus sign.\n\n# Example\n\n```rust,ignore\nlet n = str_to_i64(&env, \"-12345\");\n// n is Some(-12345)\n```"
+);
 
-/// Parse a &str to a u128.
-///
-/// Converts the string slice directly to Bytes and parses.
-///
-/// # Example
-///
-/// ```rust,ignore
-/// let n = str_to_u128(&env, "12345");
-/// // n is Some(12345)
-/// ```
-pub fn str_to_u128(env: &Env, s: &str) -> Option<u128> {
-    let bytes = Bytes::from_slice(env, s.as_bytes());
-    bytes_to_u128(&bytes)
-}
+impl_str_to_numeric!(
+    str_to_u128,
+    bytes_to_u128,
+    u128,
+    "Parse a &str to a u128.\n\nConverts the string slice directly to Bytes and parses.\n\n# Example\n\n```rust,ignore\nlet n = str_to_u128(&env, \"12345\");\n// n is Some(12345)\n```"
+);
 
-/// Parse a &str to an i128.
-///
-/// Converts the string slice directly to Bytes and parses.
-/// Handles optional leading minus sign.
-///
-/// # Example
-///
-/// ```rust,ignore
-/// let n = str_to_i128(&env, "-12345");
-/// // n is Some(-12345)
-/// ```
-pub fn str_to_i128(env: &Env, s: &str) -> Option<i128> {
-    let bytes = Bytes::from_slice(env, s.as_bytes());
-    bytes_to_i128(&bytes)
-}
+impl_str_to_numeric!(
+    str_to_i128,
+    bytes_to_i128,
+    i128,
+    "Parse a &str to an i128.\n\nConverts the string slice directly to Bytes and parses.\nHandles optional leading minus sign.\n\n# Example\n\n```rust,ignore\nlet n = str_to_i128(&env, \"-12345\");\n// n is Some(-12345)\n```"
+);
 
 /// Parse a &str to a U256.
 ///
@@ -2000,11 +1576,11 @@ pub fn str_to_i256(env: &Env, s: &str) -> Option<I256> {
 /// Escape a String for safe inclusion in JSON.
 ///
 /// Escapes the following characters:
-/// - `"` → `\"`
-/// - `\` → `\\`
-/// - newline → `\n`
-/// - carriage return → `\r`
-/// - tab → `\t`
+/// - `"` -> `\"`
+/// - `\` -> `\\`
+/// - newline -> `\n`
+/// - carriage return -> `\r`
+/// - tab -> `\t`
 ///
 /// # Example
 ///
@@ -2015,39 +1591,7 @@ pub fn str_to_i256(env: &Env, s: &str) -> Option<I256> {
 /// ```
 pub fn escape_json_string(env: &Env, s: &String) -> Bytes {
     let input = string_to_bytes(env, s);
-    let mut result = Bytes::new(env);
-
-    for i in 0..input.len() {
-        if let Some(b) = input.get(i) {
-            match b {
-                b'"' => {
-                    result.push_back(b'\\');
-                    result.push_back(b'"');
-                }
-                b'\\' => {
-                    result.push_back(b'\\');
-                    result.push_back(b'\\');
-                }
-                b'\n' => {
-                    result.push_back(b'\\');
-                    result.push_back(b'n');
-                }
-                b'\r' => {
-                    result.push_back(b'\\');
-                    result.push_back(b'r');
-                }
-                b'\t' => {
-                    result.push_back(b'\\');
-                    result.push_back(b't');
-                }
-                _ => {
-                    result.push_back(b);
-                }
-            }
-        }
-    }
-
-    result
+    escape_json_bytes_internal(env, &input)
 }
 
 /// Escape a byte slice for safe inclusion in JSON.
@@ -2057,34 +1601,52 @@ pub fn escape_json_bytes(env: &Env, input: &[u8]) -> Bytes {
     let mut result = Bytes::new(env);
 
     for &b in input {
-        match b {
-            b'"' => {
-                result.push_back(b'\\');
-                result.push_back(b'"');
-            }
-            b'\\' => {
-                result.push_back(b'\\');
-                result.push_back(b'\\');
-            }
-            b'\n' => {
-                result.push_back(b'\\');
-                result.push_back(b'n');
-            }
-            b'\r' => {
-                result.push_back(b'\\');
-                result.push_back(b'r');
-            }
-            b'\t' => {
-                result.push_back(b'\\');
-                result.push_back(b't');
-            }
-            _ => {
-                result.push_back(b);
-            }
+        push_escaped_byte(&mut result, b);
+    }
+
+    result
+}
+
+/// Internal helper for JSON escaping from Bytes
+fn escape_json_bytes_internal(env: &Env, input: &Bytes) -> Bytes {
+    let mut result = Bytes::new(env);
+
+    for i in 0..input.len() {
+        if let Some(b) = input.get(i) {
+            push_escaped_byte(&mut result, b);
         }
     }
 
     result
+}
+
+/// Push an escaped byte to the result
+fn push_escaped_byte(result: &mut Bytes, b: u8) {
+    match b {
+        b'"' => {
+            result.push_back(b'\\');
+            result.push_back(b'"');
+        }
+        b'\\' => {
+            result.push_back(b'\\');
+            result.push_back(b'\\');
+        }
+        b'\n' => {
+            result.push_back(b'\\');
+            result.push_back(b'n');
+        }
+        b'\r' => {
+            result.push_back(b'\\');
+            result.push_back(b'r');
+        }
+        b'\t' => {
+            result.push_back(b'\\');
+            result.push_back(b't');
+        }
+        _ => {
+            result.push_back(b);
+        }
+    }
 }
 
 #[cfg(test)]
