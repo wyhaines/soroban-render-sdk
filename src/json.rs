@@ -482,6 +482,18 @@ impl<'a> TaskBuilder<'a> {
 mod tests {
     use super::*;
 
+    #[cfg(test)]
+    extern crate alloc;
+
+    /// Convert Bytes to a String for content validation in tests
+    fn bytes_to_string(bytes: &Bytes) -> alloc::string::String {
+        let mut s = alloc::string::String::new();
+        for i in 0..bytes.len() {
+            s.push(bytes.get(i).unwrap() as char);
+        }
+        s
+    }
+
     #[test]
     fn test_empty_document() {
         let env = Env::default();
@@ -579,5 +591,153 @@ mod tests {
             .end()
             .build();
         assert!(output.len() > 150);
+    }
+
+    // ==========================================================================
+    // Content validation tests
+    // ==========================================================================
+
+    #[test]
+    fn test_heading_string_with_soroban_string() {
+        let env = Env::default();
+        let title = String::from_str(&env, "Dynamic Title");
+        let output = JsonDocument::new(&env, "Test")
+            .heading_string(1, &title)
+            .build();
+        let content = bytes_to_string(&output);
+        assert!(content.contains(r#""type":"heading""#));
+        assert!(content.contains(r#""level":1"#));
+        assert!(content.contains(r#""text":"Dynamic Title""#));
+    }
+
+    #[test]
+    fn test_text_string_with_soroban_string() {
+        let env = Env::default();
+        let text = String::from_str(&env, "Dynamic content");
+        let output = JsonDocument::new(&env, "Test").text_string(&text).build();
+        let content = bytes_to_string(&output);
+        assert!(content.contains(r#""type":"text""#));
+        assert!(content.contains(r#""content":"Dynamic content""#));
+    }
+
+    #[test]
+    fn test_task_string_with_soroban_string() {
+        let env = Env::default();
+        let task_text = String::from_str(&env, "Dynamic task");
+        let output = JsonDocument::new(&env, "Test")
+            .task_string(1, &task_text, true)
+            .end()
+            .build();
+        let content = bytes_to_string(&output);
+        assert!(content.contains(r#""type":"task""#));
+        assert!(content.contains(r#""text":"Dynamic task""#));
+        assert!(content.contains(r#""completed":true"#));
+    }
+
+    #[test]
+    fn test_empty_document_valid_json() {
+        let env = Env::default();
+        let output = JsonDocument::new(&env, "My App").build();
+        let content = bytes_to_string(&output);
+        // Verify structure
+        assert!(
+            content.starts_with(
+                r#"{"format":"soroban-render-json-v1","title":"My App","components":["#
+            )
+        );
+        assert!(content.ends_with("]}"));
+    }
+
+    #[test]
+    fn test_heading_contains_correct_json() {
+        let env = Env::default();
+        let output = JsonDocument::new(&env, "Test")
+            .heading(1, "Welcome")
+            .build();
+        let content = bytes_to_string(&output);
+        assert!(content.contains(r#"{"type":"heading","level":1,"text":"Welcome"}"#));
+    }
+
+    #[test]
+    fn test_text_contains_correct_json() {
+        let env = Env::default();
+        let output = JsonDocument::new(&env, "Test").text("Hello World").build();
+        let content = bytes_to_string(&output);
+        assert!(content.contains(r#"{"type":"text","content":"Hello World"}"#));
+    }
+
+    #[test]
+    fn test_divider_contains_correct_json() {
+        let env = Env::default();
+        let output = JsonDocument::new(&env, "Test").divider().build();
+        let content = bytes_to_string(&output);
+        assert!(content.contains(r#"{"type":"divider"}"#));
+    }
+
+    #[test]
+    fn test_form_textarea_field() {
+        let env = Env::default();
+        let output = JsonDocument::new(&env, "Test")
+            .form("submit")
+            .textarea_field("description", "Enter description")
+            .submit("Submit")
+            .build();
+        let content = bytes_to_string(&output);
+        assert!(content.contains(r#""type":"textarea""#));
+        assert!(content.contains(r#""name":"description""#));
+        assert!(content.contains(r#""placeholder":"Enter description""#));
+    }
+
+    #[test]
+    fn test_container_nesting() {
+        let env = Env::default();
+        let output = JsonDocument::new(&env, "Test")
+            .container_start("outer-class")
+            .text("Inside container")
+            .container_end()
+            .build();
+        let content = bytes_to_string(&output);
+        assert!(content.contains(r#""type":"container""#));
+        assert!(content.contains(r#""className":"outer-class""#));
+        assert!(content.contains(r#""components":["#));
+    }
+
+    #[test]
+    fn test_container_resets_component_count() {
+        let env = Env::default();
+        // After container, new components should work correctly
+        let output = JsonDocument::new(&env, "Test")
+            .container_start("box")
+            .text("First")
+            .text("Second")
+            .container_end()
+            .text("After container")
+            .build();
+        let content = bytes_to_string(&output);
+        // Verify commas are correctly placed (no double commas)
+        assert!(!content.contains(",,"));
+        assert!(content.contains("After container"));
+    }
+
+    #[test]
+    fn test_json_escaping_in_text() {
+        let env = Env::default();
+        // Test that special characters are escaped
+        let output = JsonDocument::new(&env, "Test")
+            .text("Hello \"World\"")
+            .build();
+        let content = bytes_to_string(&output);
+        // Quotes should be escaped
+        assert!(content.contains(r#"Hello \"World\""#));
+    }
+
+    #[test]
+    fn test_json_escaping_in_heading() {
+        let env = Env::default();
+        let output = JsonDocument::new(&env, "Test")
+            .heading(1, "Quote: \"test\"")
+            .build();
+        let content = bytes_to_string(&output);
+        assert!(content.contains(r#"Quote: \"test\""#));
     }
 }

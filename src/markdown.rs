@@ -913,6 +913,18 @@ impl<'a> MarkdownBuilder<'a> {
 mod tests {
     use super::*;
 
+    #[cfg(test)]
+    extern crate alloc;
+
+    /// Convert Bytes to a String for content validation in tests
+    fn bytes_to_string(bytes: &Bytes) -> alloc::string::String {
+        let mut s = alloc::string::String::new();
+        for i in 0..bytes.len() {
+            s.push(bytes.get(i).unwrap() as char);
+        }
+        s
+    }
+
     #[test]
     fn test_h1() {
         let env = Env::default();
@@ -1192,5 +1204,154 @@ mod tests {
             .div_end()
             .build();
         assert!(output.len() > 50);
+    }
+
+    // ==========================================================================
+    // Content validation tests (replacing length-only assertions)
+    // ==========================================================================
+
+    #[test]
+    fn test_h1_content_validation() {
+        let env = Env::default();
+        let output = MarkdownBuilder::new(&env).h1("Hello").build();
+        assert_eq!(bytes_to_string(&output), "# Hello\n\n");
+    }
+
+    #[test]
+    fn test_h2_content_validation() {
+        let env = Env::default();
+        let output = MarkdownBuilder::new(&env).h2("Title").build();
+        assert_eq!(bytes_to_string(&output), "## Title\n\n");
+    }
+
+    #[test]
+    fn test_h3_content_validation() {
+        let env = Env::default();
+        let output = MarkdownBuilder::new(&env).h3("Section").build();
+        assert_eq!(bytes_to_string(&output), "### Section\n\n");
+    }
+
+    #[test]
+    fn test_heading_level_4_5_6() {
+        let env = Env::default();
+        let h4 = MarkdownBuilder::new(&env).heading(4, "H4").build();
+        let h5 = MarkdownBuilder::new(&env).heading(5, "H5").build();
+        let h6 = MarkdownBuilder::new(&env).heading(6, "H6").build();
+        assert_eq!(bytes_to_string(&h4), "#### H4\n\n");
+        assert_eq!(bytes_to_string(&h5), "##### H5\n\n");
+        assert_eq!(bytes_to_string(&h6), "###### H6\n\n");
+    }
+
+    #[test]
+    fn test_bold_content() {
+        let env = Env::default();
+        let output = MarkdownBuilder::new(&env).bold("text").build();
+        assert_eq!(bytes_to_string(&output), "**text**");
+    }
+
+    #[test]
+    fn test_italic_content() {
+        let env = Env::default();
+        let output = MarkdownBuilder::new(&env).italic("text").build();
+        assert_eq!(bytes_to_string(&output), "*text*");
+    }
+
+    #[test]
+    fn test_code_content() {
+        let env = Env::default();
+        let output = MarkdownBuilder::new(&env).code("code").build();
+        assert_eq!(bytes_to_string(&output), "`code`");
+    }
+
+    #[test]
+    fn test_strikethrough_content() {
+        let env = Env::default();
+        let output = MarkdownBuilder::new(&env).strikethrough("old").build();
+        assert_eq!(bytes_to_string(&output), "~~old~~");
+    }
+
+    #[test]
+    fn test_text_inline() {
+        let env = Env::default();
+        let output = MarkdownBuilder::new(&env).text("hello").build();
+        // text() adds no newline
+        assert_eq!(bytes_to_string(&output), "hello");
+    }
+
+    #[test]
+    fn test_paragraph_content() {
+        let env = Env::default();
+        let output = MarkdownBuilder::new(&env).paragraph("hello").build();
+        // paragraph adds double newline
+        assert_eq!(bytes_to_string(&output), "hello\n\n");
+    }
+
+    #[test]
+    fn test_list_item_content() {
+        let env = Env::default();
+        let output = MarkdownBuilder::new(&env).list_item("item").build();
+        assert_eq!(bytes_to_string(&output), "- item\n");
+    }
+
+    #[test]
+    fn test_note_alert_content() {
+        let env = Env::default();
+        let output = MarkdownBuilder::new(&env).note("Note text").build();
+        assert_eq!(bytes_to_string(&output), "> [!NOTE]\n> Note text\n\n");
+    }
+
+    #[test]
+    fn test_warning_alert_content() {
+        let env = Env::default();
+        let output = MarkdownBuilder::new(&env).warning("Warning text").build();
+        assert_eq!(bytes_to_string(&output), "> [!WARNING]\n> Warning text\n\n");
+    }
+
+    #[test]
+    fn test_info_alert_content() {
+        let env = Env::default();
+        let output = MarkdownBuilder::new(&env).info("Info text").build();
+        assert_eq!(bytes_to_string(&output), "> [!INFO]\n> Info text\n\n");
+    }
+
+    #[test]
+    fn test_caution_alert_content() {
+        let env = Env::default();
+        let output = MarkdownBuilder::new(&env).caution("Caution text").build();
+        assert_eq!(bytes_to_string(&output), "> [!CAUTION]\n> Caution text\n\n");
+    }
+
+    #[test]
+    fn test_form_link_to_content() {
+        let env = Env::default();
+        let output = MarkdownBuilder::new(&env)
+            .form_link_to("Update Settings", "admin", "set_chunk_size")
+            .build();
+        assert_eq!(
+            bytes_to_string(&output),
+            "[Update Settings](form:@admin:set_chunk_size)"
+        );
+    }
+
+    #[test]
+    fn test_tx_link_to_content() {
+        let env = Env::default();
+        let output = MarkdownBuilder::new(&env)
+            .tx_link_to("Flag Post", "content", "flag_reply", r#"{"id":123}"#)
+            .build();
+        assert_eq!(
+            bytes_to_string(&output),
+            r#"[Flag Post](tx:@content:flag_reply {"id":123})"#
+        );
+    }
+
+    #[test]
+    fn test_tx_link_to_empty_args() {
+        let env = Env::default();
+        // When args is empty, there should be no trailing space
+        let output = MarkdownBuilder::new(&env)
+            .tx_link_to("Delete", "admin", "delete", "")
+            .build();
+        assert_eq!(bytes_to_string(&output), "[Delete](tx:@admin:delete)");
     }
 }

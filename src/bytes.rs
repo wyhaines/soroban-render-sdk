@@ -2800,4 +2800,93 @@ mod tests {
         let env = Env::default();
         assert_eq!(str_to_u32(&env, ""), None);
     }
+
+    // ==========================================================================
+    // address_to_bytes tests
+    // ==========================================================================
+
+    #[test]
+    fn test_address_to_bytes_returns_56_chars() {
+        let env = Env::default();
+        use soroban_sdk::testutils::Address as _;
+        let addr = Address::generate(&env);
+        let bytes = address_to_bytes(&env, &addr);
+        // Stellar contract addresses are 56 characters
+        assert_eq!(bytes.len(), 56);
+    }
+
+    #[test]
+    fn test_address_to_bytes_valid_format() {
+        let env = Env::default();
+        use soroban_sdk::testutils::Address as _;
+        // Generated addresses start with either 'G' (account) or 'C' (contract)
+        let addr = Address::generate(&env);
+        let bytes = address_to_bytes(&env, &addr);
+        // Address should start with valid prefix (C for contract or G for account)
+        let first_byte = bytes.get(0).unwrap();
+        assert!(first_byte == b'C' || first_byte == b'G');
+    }
+
+    // ==========================================================================
+    // symbol_to_bytes tests
+    // ==========================================================================
+
+    // Note: symbol_to_bytes works with short symbols that have tag=14 in their
+    // internal representation. The tests below verify the decode_symbol_char
+    // helper function which is the core of the decoding logic.
+
+    #[test]
+    fn test_symbol_to_bytes_returns_bytes() {
+        let env = Env::default();
+        use soroban_sdk::symbol_short;
+        let sym = symbol_short!("theme");
+        let bytes = symbol_to_bytes(&env, &sym);
+        // Just verify the function doesn't panic and returns valid Bytes
+        // The actual content depends on internal symbol representation
+        assert!(bytes.len() <= 9); // Max 9 chars for short symbols
+    }
+
+    #[test]
+    fn test_decode_symbol_char_null() {
+        // 0 -> 0 (null/end marker)
+        assert_eq!(decode_symbol_char(0), 0);
+    }
+
+    #[test]
+    fn test_decode_symbol_char_underscore() {
+        // 1 -> '_'
+        assert_eq!(decode_symbol_char(1), b'_');
+    }
+
+    #[test]
+    fn test_decode_symbol_char_digits() {
+        // 2-11 -> '0'-'9'
+        assert_eq!(decode_symbol_char(2), b'0');
+        assert_eq!(decode_symbol_char(6), b'4');
+        assert_eq!(decode_symbol_char(11), b'9');
+    }
+
+    #[test]
+    fn test_decode_symbol_char_uppercase() {
+        // 12-37 -> 'A'-'Z'
+        assert_eq!(decode_symbol_char(12), b'A');
+        assert_eq!(decode_symbol_char(24), b'M');
+        assert_eq!(decode_symbol_char(37), b'Z');
+    }
+
+    #[test]
+    fn test_decode_symbol_char_lowercase() {
+        // 38-63 -> 'a'-'z'
+        assert_eq!(decode_symbol_char(38), b'a');
+        assert_eq!(decode_symbol_char(50), b'm');
+        assert_eq!(decode_symbol_char(63), b'z');
+    }
+
+    #[test]
+    fn test_decode_symbol_char_out_of_range() {
+        // Out of range -> 0
+        assert_eq!(decode_symbol_char(64), 0);
+        assert_eq!(decode_symbol_char(100), 0);
+        assert_eq!(decode_symbol_char(255), 0);
+    }
 }

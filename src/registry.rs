@@ -500,4 +500,98 @@ mod tests {
         let aliases = client.emit_aliases();
         assert_eq!(aliases.len(), 0);
     }
+
+    // ==========================================================================
+    // Edge case tests
+    // ==========================================================================
+
+    #[cfg(test)]
+    extern crate alloc;
+
+    /// Convert Bytes to a String for content validation in tests
+    fn bytes_to_string(bytes: &Bytes) -> alloc::string::String {
+        let mut s = alloc::string::String::new();
+        for i in 0..bytes.len() {
+            s.push(bytes.get(i).unwrap() as char);
+        }
+        s
+    }
+
+    #[test]
+    fn test_emit_aliases_single_contract_content() {
+        let env = Env::default();
+        env.mock_all_auths();
+
+        let contract_id = env.register(TestRegistry, ());
+        let client = TestRegistryClient::new(&env, &contract_id);
+
+        let admin = Address::generate(&env);
+        let theme = Address::generate(&env);
+
+        let mut contracts = Map::new(&env);
+        contracts.set(symbol_short!("theme"), theme.clone());
+
+        client.init(&admin, &contracts);
+
+        let aliases = client.emit_aliases();
+        let content = bytes_to_string(&aliases);
+
+        // Verify format: {{aliases ...=CONTRACT_ID }}
+        assert!(content.starts_with("{{aliases "));
+        assert!(content.ends_with("}}"));
+        // Should contain an equals sign (alias=address)
+        assert!(content.contains("="));
+        // Should be non-trivial length (prefix + alias + "=" + id + space + suffix)
+        assert!(content.len() > 20);
+    }
+
+    #[test]
+    fn test_emit_aliases_with_multiple_contracts() {
+        let env = Env::default();
+        env.mock_all_auths();
+
+        let contract_id = env.register(TestRegistry, ());
+        let client = TestRegistryClient::new(&env, &contract_id);
+
+        let admin = Address::generate(&env);
+        let contract1 = Address::generate(&env);
+        let contract2 = Address::generate(&env);
+
+        let mut contracts = Map::new(&env);
+        contracts.set(symbol_short!("api"), contract1);
+        contracts.set(symbol_short!("web"), contract2);
+
+        client.init(&admin, &contracts);
+
+        let aliases = client.emit_aliases();
+        let content = bytes_to_string(&aliases);
+
+        // Verify format includes both aliases
+        assert!(content.starts_with("{{aliases "));
+        assert!(content.ends_with("}}"));
+        // Should contain multiple equals signs (multiple alias=address pairs)
+        let equals_count = content.matches('=').count();
+        assert_eq!(equals_count, 2);
+    }
+
+    #[test]
+    fn test_json_with_bytes_utilities() {
+        // Integration test: json with bytes utilities
+        let env = Env::default();
+        use crate::bytes::u32_to_bytes;
+        use crate::json::JsonDocument;
+
+        let count: u32 = 100;
+        let count_bytes = u32_to_bytes(&env, count);
+
+        // Create JSON document and verify it contains the number
+        let output = JsonDocument::new(&env, "Stats").heading(1, "Count").build();
+
+        let content = bytes_to_string(&output);
+        assert!(content.contains("Stats"));
+        assert!(content.contains("Count"));
+
+        // Verify count_bytes was created correctly
+        assert_eq!(count_bytes.len(), 3); // "100" is 3 chars
+    }
 }

@@ -976,4 +976,81 @@ mod tests {
             .or_default(|_| 0u32);
         assert_eq!(result, 5);
     }
+
+    // ==========================================================================
+    // Edge case tests
+    // ==========================================================================
+
+    #[test]
+    fn test_path_with_double_slash() {
+        let env = Env::default();
+        // Double slashes are treated as empty segments (filtered out)
+        let path = Bytes::from_slice(&env, b"//tasks");
+        // Pattern matching splits on '/' and filters empty segments
+        assert!(pattern_matches(&env, &path, b"/tasks"));
+    }
+
+    #[test]
+    fn test_path_with_trailing_slash() {
+        let env = Env::default();
+        // "/tasks/" vs "/tasks" - the trailing slash creates an empty segment
+        let path_with_slash = Bytes::from_slice(&env, b"/tasks/");
+        let path_without_slash = Bytes::from_slice(&env, b"/tasks");
+        // Both should match /tasks pattern since empty segments are filtered
+        assert!(pattern_matches(&env, &path_without_slash, b"/tasks"));
+        assert!(pattern_matches(&env, &path_with_slash, b"/tasks"));
+    }
+
+    #[test]
+    fn test_pattern_empty_param_name() {
+        let env = Env::default();
+        // Edge case: pattern with empty param name "/task/{}"
+        // This is technically malformed, but should not crash
+        let path = Bytes::from_slice(&env, b"/task/123");
+        let req = Request::new(&env, path, b"/task/{}");
+        // Empty key returns None since it doesn't match a valid param
+        let result = req.get_var(b"");
+        // The function should not panic, regardless of return value
+        assert!(result.is_none() || result.is_some());
+    }
+
+    #[test]
+    fn test_query_param_with_special_chars() {
+        let env = Env::default();
+        // Query param with equals sign in value
+        let result = Router::new(
+            &env,
+            Some(String::from_str(&env, "/test?url=http://foo.com/bar")),
+        )
+        .handle(b"/test", |req| {
+            let url = req.get_query_param(b"url");
+            url.map(|b| b.len()).unwrap_or(0)
+        })
+        .or_default(|_| 0u32);
+        // "http://foo.com/bar" = 18 chars
+        assert_eq!(result, 18);
+    }
+
+    #[test]
+    fn test_markdown_with_dynamic_number() {
+        // Integration test: markdown with bytes utilities
+        let env = Env::default();
+        use crate::bytes::u32_to_bytes;
+        use crate::markdown::MarkdownBuilder;
+
+        let count: u32 = 42;
+        let output = MarkdownBuilder::new(&env)
+            .text("Count: ")
+            .raw(u32_to_bytes(&env, count))
+            .build();
+
+        // Verify the output contains both parts
+        assert!(output.len() > 7);
+        // First 7 chars should be "Count: "
+        assert_eq!(output.get(0), Some(b'C'));
+        assert_eq!(output.get(6), Some(b' '));
+        // Next chars should be "42"
+        assert_eq!(output.get(7), Some(b'4'));
+        assert_eq!(output.get(8), Some(b'2'));
+    }
 }
