@@ -1351,7 +1351,7 @@ dependencies = [
 
 [[package]]
 name = "soroban-render-sdk"
-version = "0.1.5"
+version = "0.1.6"
 dependencies = [
  "soroban-sdk",
 ]
